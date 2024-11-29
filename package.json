@@ -10,10 +10,17 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:aiCodingView"
+    "onView:aiCodingView",
+    "onCommand:extension.readFileContent"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "extension.readFileContent",
+        "title": "Read File Content"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {

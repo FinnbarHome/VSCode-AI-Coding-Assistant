@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-// Func called when ext is activated
+// Function called when the extension is activated
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Coding Assistant is now active!');
 
@@ -11,40 +11,58 @@ export function activate(context: vscode.ExtensionContext) {
             new AICodingWebviewViewProvider(context) // Create an instance of the provider class
         )
     );
+
+    // Register a command to read content from the currently active file
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.readFileContent', () => {
+            const activeEditor = vscode.window.activeTextEditor; // Get the active editor
+
+            if (!activeEditor) {
+                vscode.window.showErrorMessage('No active editor found. Open a file to read its content.');
+                return;
+            }
+
+            const document = activeEditor.document; // Access the document from the editor
+            const content = document.getText(); // Get the content of the document
+
+            vscode.window.showInformationMessage('File content read successfully!');
+            console.log('File Content:', content); // Log the content for debugging
+        })
+    );
 }
 
-// For cleanup, called when ext deactivated
+// For cleanup, called when the extension is deactivated
 export function deactivate() {}
 
+// Webview View Provider Class
 class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView; // Holds a reference to the webview view instance
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
-    // Automatically triggered when for eg: a User clicks on activity bar
+    // Automatically triggered when, for example, a user clicks on the activity bar
     resolveWebviewView(
-        webviewView: vscode.WebviewView, // The webview view instance provided by VSCode
+        webviewView: vscode.WebviewView, // The webview view instance provided by VS Code
         context: vscode.WebviewViewResolveContext, // Contextual information about the resolution
-        _token: vscode.CancellationToken // Token for cancellation, not used here but allows the method to stop processing eg: the user closes the view before it finishes loading
+        _token: vscode.CancellationToken // Token for cancellation, not used here but allows the method to stop processing
     ) {
         this._view = webviewView; // Save the reference to the webview view
 
         // Enable scripts within the webview
         webviewView.webview.options = {
-            enableScripts: true, // Allows JS execution in the webview
+            enableScripts: true, // Allows JavaScript execution in the webview
         };
 
         // Resolve the URI for the external stylesheet
         const styleUri = webviewView.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css') // Path to the CSS file in assets folder
+            vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css') // Path to the CSS file in the assets folder
         );
 
         // Set the content of the webview
         webviewView.webview.html = this.getHtmlContent(styleUri); // Pass the resolved style URI to the HTML content generator
     }
 
-   
-	// Method to generate HTML content for the webview
+    // Method to generate HTML content for the webview
     private getHtmlContent(styleUri: vscode.Uri): string {
         return `
             <!DOCTYPE html>
