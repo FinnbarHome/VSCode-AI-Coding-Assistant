@@ -7,7 +7,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register the webview view provider for the activity bar view
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
-            'aiCodingView', // ID of the view to associate this provider with (matches the id in package.json)
+            'aiCodingView', // ID of view to link provider with (matches id in package.json)
             new AICodingWebviewViewProvider(context) // Create an instance of the provider class
         )
     );
@@ -22,11 +22,11 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            const document = activeEditor.document; // Access the document from the editor
-            const content = document.getText(); // Get the content of the document
+            const document = activeEditor.document; // Access the doc from the editor
+            const content = document.getText(); // Get the content of the doc
 
             vscode.window.showInformationMessage('File content read successfully!');
-            console.log('File Content:', content); // Log the content for debugging
+            console.log('File Content:', content); 
         })
     );
 }
