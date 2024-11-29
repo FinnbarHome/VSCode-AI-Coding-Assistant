@@ -3,20 +3,16 @@ import * as vscode from 'vscode';
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, your extension "vscode-ai-coding-assistant" is now active!');
 
-    const disposable = vscode.commands.registerCommand('vscode-ai-coding-assistant.helloWorld', () => {
-        // Create and show a new panel
-        const panel = vscode.window.createWebviewPanel(
-            'helloWorldPanel', // Identifier for the panel
-            'Hello World Panel', // Title of the panel
-            vscode.ViewColumn.One, // Editor column to show the new panel
-            {} // Webview options
-        );
+    // Automatically create and show a new panel
+    const panel = vscode.window.createWebviewPanel(
+        'helloWorldPanel', // Unique identifier for the panel
+        'Hello World Panel', // Title of the panel
+        vscode.ViewColumn.One, // Show in the first column
+        {} // Webview options
+    );
 
-        // Set the HTML content for the panel
-        panel.webview.html = getWebviewContent();
-    });
-
-    context.subscriptions.push(disposable);
+    // Set the HTML content for the panel
+    panel.webview.html = getWebviewContent();
 }
 
 function getWebviewContent(): string {
@@ -30,7 +26,7 @@ function getWebviewContent(): string {
         </head>
         <body>
             <h1>Hello World!</h1>
-            <p>Welcome to your new panel.</p>
+            <p>Panel opened automatically!</p>
         </body>
         </html>
     `;

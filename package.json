@@ -10,8 +10,9 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:vscode-ai-coding-assistant.helloWorld"
+    "*"
   ],
+
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
