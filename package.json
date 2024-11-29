@@ -1,7 +1,7 @@
 {
   "name": "vscode-ai-coding-assistant",
-  "displayName": "VSCode-AI-Coding-Assistant",
-  "description": "AI powered coding assistant",
+  "displayName": "VSCode AI Coding Assistant",
+  "description": "AI-powered coding assistant focused on activity view.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.95.0"
@@ -10,23 +10,33 @@
     "Other"
   ],
   "activationEvents": [
-    "*"
+    "onView:aiCodingView"
   ],
-
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "vscode-ai-coding-assistant.helloWorld",
-        "title": "Hello World"
-      }
-    ]
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiCodingAssistant",
+          "title": "AI Assistant",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiCodingAssistant": [
+        {
+          "id": "aiCodingView",
+          "name": "AI Coding View",
+          "type": "webview"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
   },
