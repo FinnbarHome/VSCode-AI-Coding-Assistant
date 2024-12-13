@@ -1,43 +1,24 @@
 import OpenAI from 'openai';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
 
-// Explicitly set the path to the .env file
-const envPath = path.resolve('C:\\Users\\TheGu\\Documents\\GitHub\\VSCode-AI-Coding-Assistant\\.env');
-dotenv.config({ path: envPath });
-
-// Validate the API key
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-    throw new Error("The OPENAI_API_KEY environment variable is missing. Please add it to your .env file.");
-}
-
-// Initialize the OpenAI client
+// Manually set the API key for now
 const openai = new OpenAI({
-    apiKey, // Use the API key loaded from .env
+    apiKey: '', // Replace with your actual API key
 });
 
-// Log the loaded API key for debugging
-console.log("OpenAI API Key Loaded:", apiKey ? "Yes" : "No");
-
-// Function to get a response from OpenAI
 export async function getAIResponse(prompt: string): Promise<string> {
     try {
-        // Make the API call
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini", // Specify the model
+            model: "gpt-4o-mini",
             messages: [
-                { role: "system", content: "You are a helpful assistant." },
+                { role: "system", content: "You are an AI code reviewer. Analyze the provided code and categorize the feedback into the following sections: Serious Problems, Warnings, Refactoring Suggestions, Coding Conventions, Performance Optimization, Security Issues, Best Practices, Readability and Maintainability, Code Smells, and Educational Tips. Provide concise and actionable feedback under each category where applicable." },
                 { role: "user", content: prompt },
             ],
         });
 
-        // Extract the response content
         const content = completion.choices[0]?.message?.content ?? "No response from AI.";
-        return content.trim(); // Ensure the response is clean
-    } catch (error: any) {
-        // Log and handle errors
-        console.error("Error with OpenAI API:", error.response?.data || error.message || error);
+        return content.trim();
+    } catch (error) {
+        console.error("Error with OpenAI API:", error);
         return "Sorry, I couldn't process your request.";
     }
 }

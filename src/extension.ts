@@ -31,21 +31,18 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
-    resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
-    ) {
-        this._view = webviewView;
+    // Automatically triggered when, for example, a user clicks on the activity bar
+    resolveWebviewView(webviewView: vscode.WebviewView) {
+        this._view = webviewView; // Save the reference to the webview view
 
         // Enable scripts within the webview
         webviewView.webview.options = {
-            enableScripts: true,
+            enableScripts: true, // Allows JavaScript execution in the webview
         };
 
         // Resolve the URI for the external stylesheet
         const styleUri = webviewView.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css')
+            vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css') // Path to the CSS file in the assets folder
         );
 
         // Set the initial content of the webview
@@ -57,83 +54,68 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 const activeEditor = vscode.window.activeTextEditor; // Get the active editor
                 if (!activeEditor) {
                     vscode.window.showErrorMessage('No active editor found. Open a file to get feedback on your code.');
-                    webviewView.webview.postMessage({
-                        command: 'displayFileInfo',
-                        filename: 'No file selected',
-                        response: 'No active file to analyze.',
-                    });
+                    this.postMessage('No file selected', 'Please open a file to analyze.');
                     return;
                 }
 
-                const fileName = activeEditor.document.fileName;
-                const extension = this.getFileExtension(fileName);
+                const fileName = activeEditor.document.fileName; // Get the file name
+                const extension = this.getFileExtension(fileName); // Get the file extension
 
                 // Check if the file extension is supported
                 if (!this.supportedExtensions.includes(extension)) {
-                    vscode.window.showWarningMessage(
-                        `The selected file type (${extension}) is not supported for analysis.`
-                    );
-                    webviewView.webview.postMessage({
-                        command: 'displayFileInfo',
-                        filename: this.getShortFileName(fileName),
-                        response: `File type (${extension}) is not supported.`,
-                    });
+                    vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
+                    this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
                     return;
                 }
 
                 const fileContent = activeEditor.document.getText(); // Get the content of the active file
 
                 // Limit the file content to 2048 characters (approx. 800 tokens)
-                const truncatedContent =
-                    fileContent.length > 2048
-                        ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
-                        : fileContent;
+                const truncatedContent = fileContent.length > 2048
+                    ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
+                    : fileContent;
 
                 // Construct the prompt for OpenAI
-                const prompt = `You are a code reviewer. Provide constructive feedback on the following code without giving the completed solution. Offer guidance and show small snippets as examples to illustrate improvements:
-
-                ${truncatedContent}`;
+                const prompt = `Review the following code and categorize the feedback into: Serious Problems, Warnings, Refactoring Suggestions, Coding Conventions, Performance Optimization, Security Issues, Best Practices, Readability and Maintainability, Code Smells, and Educational Tips.\n\n${truncatedContent}`;
 
                 // Call OpenAI API and get the response
                 const response = await getAIResponse(prompt);
 
                 // Post the filename and response back to the webview
-                webviewView.webview.postMessage({
-                    command: 'displayFileInfo',
-                    filename: this.getShortFileName(fileName),
-                    response: response,
-                });
+                this.postMessage(this.getShortFileName(fileName), response);
             }
         });
     }
 
+    // Get the webview instance
     getView() {
         return this._view;
     }
 
+    // Update the targeted file in the webview
     updateTargetFile(filePath: string) {
         const shortName = this.getShortFileName(filePath);
-        const extension = this.getFileExtension(filePath);
-
         if (this._view) {
-            this._view.webview.postMessage({
-                command: 'displayFileInfo',
-                filename: shortName,
-                response: extension
-                    ? `Target file updated to: ${shortName}`
-                    : `Unsupported file type. Select a valid file for analysis.`,
-            });
+            this.postMessage(shortName, `Target file updated to: ${shortName}`);
         }
     }
 
+    // Helper method to send messages to the webview
+    private postMessage(filename: string, response: string) {
+        this._view?.webview.postMessage({ command: 'displayFileInfo', filename, response });
+    }
+
+    // Helper method to get the short file name from a full path
     private getShortFileName(filePath: string): string {
         return filePath.split(/[\\/]/).pop() || 'Unknown File';
     }
 
+    // Helper method to get the file extension
     private getFileExtension(filePath: string): string {
         return filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
     }
 
+    // Method to generate HTML content for the webview
     private getHtmlContent(styleUri: vscode.Uri): string {
         return `
             <!DOCTYPE html>
@@ -147,6 +129,8 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                     body { font-family: Arial, sans-serif; padding: 10px; text-align: center; }
                     button { margin: 5px; padding: 10px; }
                     .info { margin-top: 20px; text-align: left; white-space: pre-wrap; }
+                    .category { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+                    .category h2 { color: #007acc; }
                 </style>
             </head>
             <body>
@@ -156,7 +140,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 <div class="info">
                     <strong>Currently Targeting:</strong> <span id="filename">None</span>
                 </div>
-                <div id="response" style="margin-top: 20px;"></div>
+                <div id="response" class="info"></div>
 
                 <script>
                     const vscode = acquireVsCodeApi();
@@ -169,9 +153,16 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                         const message = event.data;
                         if (message.command === 'displayFileInfo') {
                             document.getElementById('filename').innerText = message.filename;
-                            document.getElementById('response').innerText = message.response;
+                            document.getElementById('response').innerHTML = formatResponse(message.response);
                         }
                     });
+
+                    function formatResponse(response) {
+                        return response
+                            .split(/\\n(?=### )/)
+                            .map(section => \`<div class="category">\${section.trim().replace(/### (.*)/, '<h2>$1</h2>')}</div>\`)
+                            .join('');
+                    }
                 </script>
             </body>
             </html>
