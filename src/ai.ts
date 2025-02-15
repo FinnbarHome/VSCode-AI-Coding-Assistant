@@ -70,4 +70,3 @@ export async function getAIResponse(prompt: string): Promise<string> {
         return "Sorry, I couldn't process your request.";
     }
 }
-

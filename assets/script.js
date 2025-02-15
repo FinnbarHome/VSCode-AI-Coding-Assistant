@@ -1,64 +1,89 @@
 const vscode = acquireVsCodeApi();
 
-
-
 function sendRequest() {
-    document.getElementById('response').innerHTML = "<p>⏳ Analyzing your code... Please wait.</p>";
+    const responseElement = document.getElementById('response');
+
+    // Keep only the "Loading..." message while AI processes
+    responseElement.innerHTML = `
+        <p style="color: #61dafb;">⏳ Analyzing your code... Please wait.</p>
+    `;
+
     vscode.postMessage({ command: 'getAIAnalysis' });
 }
 
 window.addEventListener('message', (event) => {
     const message = event.data;
+
     if (message.command === 'displayFileInfo') {
         document.getElementById('filename').innerText = message.filename;
-        document.getElementById('response').innerHTML = formatResponse(message.response);
+
+        // Wait until AI response is fully processed before updating UI
+        if (message.response && message.response.trim().length > 0) {
+            processAIResponse(message.response);
+        }
     }
 });
 
-function formatResponse(response) {
-    // Define the expected 10 categories
-    const categories = [
-        "Serious Problems",
-        "Warnings",
-        "Refactoring Suggestions",
-        "Coding Conventions",
-        "Performance Optimization",
-        "Security Issues",
-        "Best Practices",
-        "Readability and Maintainability",
-        "Code Smells",
-        "Educational Tips"
-    ];
+function processAIResponse(response) {
+    const responseElement = document.getElementById('response');
 
-    // Initialize an object to store feedback per category
-    let sections = {};
+    // Ensure loading message is kept until response is fully processed
+    setTimeout(() => {
+        responseElement.innerHTML = formatResponse(response);
+    }, 100); // Small delay to ensure smooth transition
+}
+
+function formatResponse(response) {
+    if (!response || response.trim().length === 0) {
+        return ""; // Keep "Loading..." until we get a valid response
+    }
+
+    // Define the expected 10 categories
+    const categories = {
+        "Serious Problems": "",
+        "Warnings": "",
+        "Refactoring Suggestions": "",
+        "Coding Conventions": "",
+        "Performance Optimization": "",
+        "Security Issues": "",
+        "Best Practices": "",
+        "Readability and Maintainability": "",
+        "Code Smells": "",
+        "Educational Tips": ""
+    };
+
     let currentCategory = null;
 
-    // Ensure the AI response is split correctly into sections
+    // Process AI response properly
     response.split(/\n(?=#### )/).forEach(section => {
         const titleMatch = section.match(/#### (.+)/);
         const title = titleMatch ? titleMatch[1].trim() : null;
 
-        if (title && categories.includes(title)) {
+        if (title && categories.hasOwnProperty(title)) {
             currentCategory = title;
-            sections[currentCategory] = ""; // Initialize category
         }
 
         if (currentCategory) {
-            sections[currentCategory] += section.replace(/#### .*/, '').trim() + "\n";
+            // Append content under the correct category
+            categories[currentCategory] += section.replace(/#### .*/, '').trim() + "\n";
         }
     });
 
-    // Build collapsible sections only for known categories
-    return categories.map(category => {
-        const content = sections[category] && sections[category].trim().length > 0
-            ? sections[category].trim()
-            : "✅ No issues found.";
-        return `
-            <details class="category">
-                <summary>${category}</summary>
-                <div class="content">${content.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>')}</div>
-            </details>
-        `;
-    }).join('');
+    console.log("Parsed Sections:", categories); // Debugging
+
+    // Generate collapsible sections ONLY after AI response is fully processed
+    return Object.keys(categories)
+        .map(category => {
+            const content = categories[category].trim();
+            
+            // If the AI response didn't provide content for this category, we do NOT show it initially.
+            return content.length > 0
+                ? `
+                <details class="category">
+                    <summary>${category}</summary>
+                    <div class="content">${content.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>')}</div>
+                </details>
+                ` : "";
+        })
+        .join('');
 }
