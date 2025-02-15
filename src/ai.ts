@@ -21,7 +21,7 @@ export async function getAIResponse(prompt: string): Promise<string> {
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
-                { role: "system", content: "You are an AI code reviewer. Analyze the provided code and categorize the feedback into the following sections: Serious Problems, Warnings, Refactoring Suggestions, Coding Conventions, Performance Optimization, Security Issues, Best Practices, Readability and Maintainability, Code Smells, and Educational Tips. Provide concise and actionable feedback under each category where applicable." },
+                { role: "system", content: "You are a beginner-friendly AI coding assistant. When analyzing the code, provide feedback in a structured manner:\n1. Explain the issue clearly and simply.\n2. Give a small, easy-to-follow improvement.\n3. (Optional) Provide a brief explanation of why this change is beneficial.\nIf the code is correct, praise the user and suggest best practices for improvement. Keep responses encouraging and educational." },
                 { role: "user", content: prompt },
             ],
         });
