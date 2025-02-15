@@ -36,19 +36,14 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     // Automatically triggered when a user clicks on the activity bar
     resolveWebviewView(webviewView: vscode.WebviewView) {
         this._view = webviewView;
-
+    
         webviewView.webview.options = {
             enableScripts: true, // Allows JavaScript execution in the webview
         };
-
-        // Load external stylesheet
-        const styleUri = webviewView.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css')
-        );
-
+    
         // Set the initial content of the webview
-        webviewView.webview.html = this.getHtmlContent(styleUri);
-
+        webviewView.webview.html = this.getHtmlContent(webviewView.webview);
+    
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(async (message) => {
             if (message.command === 'getAIAnalysis') {
@@ -58,38 +53,39 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                     this.postMessage('No file selected', 'Please open a file to analyze.');
                     return;
                 }
-
+    
                 const fileName = activeEditor.document.fileName;
                 const extension = this.getFileExtension(fileName);
-
+    
                 // Check if the file type is supported
                 if (!this.supportedExtensions.includes(extension)) {
                     vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
                     this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
                     return;
                 }
-
+    
                 const fileContent = activeEditor.document.getText();
-
+    
                 // Limit file content to 2048 characters
                 const truncatedContent = fileContent.length > 2048
                     ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
                     : fileContent;
-
+    
                 // Construct AI prompt
                 const prompt = `Review the following code and categorize the feedback into: Serious Problems, Warnings, Refactoring Suggestions, Coding Conventions, Performance Optimization, Security Issues, Best Practices, Readability and Maintainability, Code Smells, and Educational Tips.\n\n${truncatedContent}`;
-
+    
                 // Show loading message
                 this.postMessage(this.getShortFileName(fileName), "⏳ Analyzing your code... Please wait.");
-
+    
                 // Call OpenAI API
                 const response = await getAIResponse(prompt);
-
+    
                 // Post AI response to webview
                 this.postMessage(this.getShortFileName(fileName), response);
             }
         });
     }
+    
 
     // Get the webview instance
     getView() {
@@ -120,13 +116,19 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     // Generate HTML content for the webview
-    private getHtmlContent(styleUri: vscode.Uri): string {
+    private getHtmlContent(webview: vscode.Webview): string {
         const htmlPath = path.join(this.context.extensionUri.fsPath, 'assets', 'webview.html');
         let htmlContent = fs.readFileSync(htmlPath, 'utf8');
     
-        // Replace placeholders with dynamic values
+        // Dynamically resolve URIs for styles and scripts
+        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css'));
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'script.js'));
+    
+        // Replace placeholders in HTML file
         htmlContent = htmlContent.replace('{{styleUri}}', styleUri.toString());
+        htmlContent = htmlContent.replace('{{scriptUri}}', scriptUri.toString());
     
         return htmlContent;
     }
+    
 }

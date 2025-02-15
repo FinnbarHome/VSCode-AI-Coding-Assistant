@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Coding Assistant</title>
     <link rel="stylesheet" href="{{styleUri}}">
-    <style>
-        body { font-family: Arial, sans-serif; padding: 10px; text-align: center; background-color: #f4f4f4; }
-        button { background-color: #007acc; color: white; padding: 10px 15px; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; }
-        button:hover { background-color: #005f99; }
-        .info { margin-top: 20px; text-align: left; white-space: pre-wrap; }
-        .category { margin-top: 10px; border: 1px solid #ddd; background: white; padding: 10px; border-radius: 5px; }
-        .category summary { font-size: 18px; font-weight: bold; cursor: pointer; }
-        .category .content { margin-top: 10px; padding: 5px; }
-        pre { background: #222; color: #f8f8f2; padding: 10px; border-radius: 5px; overflow-x: auto; }
-        code { font-family: "Courier New", monospace; }
-    </style>
 </head>
 <body>
     <h1>AI Coding Assistant</h1>
@@ -26,35 +15,6 @@
     </div>
     <div id="response" class="info"></div>
 
-    <script>
-        const vscode = acquireVsCodeApi();
-
-        function sendRequest() {
-            document.getElementById('response').innerHTML = "<p>⏳ Analyzing your code... Please wait.</p>";
-            vscode.postMessage({ command: 'getAIAnalysis' });
-        }
-
-        window.addEventListener('message', (event) => {
-            const message = event.data;
-            if (message.command === 'displayFileInfo') {
-                document.getElementById('filename').innerText = message.filename;
-                document.getElementById('response').innerHTML = formatResponse(message.response);
-            }
-        });
-
-        function formatResponse(response) {
-            return response
-                .split(/\n(?=### )/)
-                .map(section => {
-                    const titleMatch = section.match(/### (.*)/);
-                    const title = titleMatch ? titleMatch[1] : "Unknown Section";
-                    let content = section.replace(/### .*/, '').trim();
-                    content = content.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>');
-
-                    return `<details class="category"><summary>${title}</summary><div class="content">${content}</div></details>`;
-                })
-                .join('');
-        }
-    </script>
+    <script src="{{scriptUri}}"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@ body {
     font-family: Arial, sans-serif;
     padding: 10px;
     text-align: center;
+    background-color: #f4f4f4;
 }
 
 h1 {
@@ -11,4 +12,55 @@ h1 {
 p {
     font-size: 14px;
     color: #8a8bca;
+}
+
+button {
+    background-color: #007acc;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #005f99;
+}
+
+.info {
+    margin-top: 20px;
+    text-align: left;
+    white-space: pre-wrap;
+}
+
+.category {
+    margin-top: 10px;
+    border: 1px solid #ddd;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.category summary {
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.category .content {
+    margin-top: 10px;
+    padding: 5px;
+}
+
+pre {
+    background: #222;
+    color: #f8f8f2;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+code {
+    font-family: "Courier New", monospace;
 }
