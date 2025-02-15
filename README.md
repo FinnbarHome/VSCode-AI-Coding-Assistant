@@ -88,6 +88,7 @@ npm run compile
 
 ## ⚡ Example Output
 
+```md
 ▶ Serious Problems
    - Function `greetUser()` is missing an argument.
 
@@ -101,7 +102,7 @@ npm run compile
    ✅ No issues found.
 
 etc
-
+```
 
 ---
 
