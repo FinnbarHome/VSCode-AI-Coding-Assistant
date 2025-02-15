@@ -1,6 +1,4 @@
 
-### **📌 README.md**
-```md
 # VSCode AI Coding Assistant
 ### 🎓 Year 4 Individual Project - Dundee University  
 **Author:** Finnbar Home  
