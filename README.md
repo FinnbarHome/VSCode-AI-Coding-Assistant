@@ -87,7 +87,7 @@ npm run compile
 ---
 
 ## ⚡ Example Output
-```
+
 ▶ Serious Problems
    - Function `greetUser()` is missing an argument.
 
@@ -101,14 +101,7 @@ npm run compile
    ✅ No issues found.
 
 etc
-```
 
----
-
-## 📌 Future Enhancements
-- 🛠️ **Support for More Languages** (C#, Rust, Go)  
-- 🔎 **Enhanced Debugging Insights**  
-- 📚 **Code Improvement Suggestions with Examples**  
 
 ---
 
@@ -121,5 +114,5 @@ This project is part of **Finnbar Home’s** **Year 4 Individual Project** at **
 
 ## 📜 License
 This project is for **academic purposes** and is **not intended for commercial use**.
-```
+
 
