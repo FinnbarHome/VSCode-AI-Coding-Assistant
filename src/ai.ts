@@ -1,9 +1,20 @@
 import OpenAI from 'openai';
+import dotenv from 'dotenv';
+import * as path from 'path';
 
-// Manually set the API key for now
-const openai = new OpenAI({
-    apiKey: '', // Replace with your actual API key
-});
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '../.env') }); 
+
+const apiKey = process.env.OPENAI_API_KEY;
+
+if (!apiKey) {
+    console.error("❌ OpenAI API Key is missing! Check your .env file.");
+    throw new Error("OpenAI API Key not found. Make sure you have a valid `.env` file.");
+}
+
+// Initialize OpenAI instance
+const openai = new OpenAI({ apiKey });
 
 export async function getAIResponse(prompt: string): Promise<string> {
     try {
