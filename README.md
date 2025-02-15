@@ -6,8 +6,6 @@
 ## 🛠️ Overview
 The **VSCode AI Coding Assistant** is a **VS Code extension** designed to help **beginner programmers** improve their coding skills through **AI-powered feedback**. Instead of generating large amounts of code, this extension provides **structured suggestions** to help users **learn, debug, and optimize** their code effectively.
 
----
-
 ## 🚀 Features
 - 📌 **AI-Powered Code Review** – Offers feedback across **10 structured categories**:
   - **Serious Problems**
@@ -25,8 +23,6 @@ The **VSCode AI Coding Assistant** is a **VS Code extension** designed to help *
 - 🎨 **Dark-Themed UI** – Clean, modern, and easy-to-read interface inside VS Code.  
 - 💡 **Beginner-Friendly Guidance** – Focuses on **learning over automation**, explaining fixes in simple terms.  
 
----
-
 ## 🏗️ Tech Stack
 This project utilizes the following technologies:
 
@@ -41,8 +37,6 @@ This project utilizes the following technologies:
 ### **Frontend & UI**
 - **HTML, CSS, JavaScript** – Lightweight, responsive, and styled for **dark mode**.
 - **Tailored Webview UI** – Displays feedback in collapsible sections for clarity.
-
----
 
 ## 📥 Installation & Setup
 ### **1️⃣ Prerequisites**
@@ -76,18 +70,13 @@ npm run compile
 - Open VS Code  
 - Press `F5` to launch the extension in a new VS Code window.  
 
----
-
 ## 🛠️ Usage
 1️⃣ Open any **JavaScript, TypeScript, Python, Java, or C++ file**.  
 2️⃣ Click on the **"AI Coding Assistant"** in the sidebar.  
 3️⃣ Press the **"Get Feedback"** button.  
 4️⃣ The AI will analyze your code and generate **structured feedback** in collapsible sections.  
 
----
-
 ## ⚡ Example Output
-
 ```md
 ▶ Serious Problems
    - Function `greetUser()` is missing an argument.
@@ -104,14 +93,10 @@ npm run compile
 etc
 ```
 
----
-
 ## 🤝 Contributions
 This project is part of **Finnbar Home’s** **Year 4 Individual Project** at **Dundee University**.  
 
 🔹 If you have feedback or want to contribute, feel free to open an **Issue** on GitHub.
-
----
 
 ## 📜 License
 This project is for **academic purposes** and is **not intended for commercial use**.
