@@ -27,7 +27,7 @@ export function deactivate() {}
 
 class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView; // Holds a reference to the webview view instance
-    private supportedExtensions = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs']; // Add more supported extensions
+    private supportedExtensions = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md']; 
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
