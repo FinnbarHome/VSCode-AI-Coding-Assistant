@@ -131,4 +131,5 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         return htmlContent;
     }
     
+    
 }
