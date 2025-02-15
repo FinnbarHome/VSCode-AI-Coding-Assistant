@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { getAIResponse } from './ai';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Function called when the extension is activated
 export function activate(context: vscode.ExtensionContext) {
@@ -26,23 +28,22 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
-    private _view?: vscode.WebviewView; // Holds a reference to the webview view instance
-    private supportedExtensions = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md']; 
+    private _view?: vscode.WebviewView;
+    private supportedExtensions = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md'];
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
-    // Automatically triggered when, for example, a user clicks on the activity bar
+    // Automatically triggered when a user clicks on the activity bar
     resolveWebviewView(webviewView: vscode.WebviewView) {
-        this._view = webviewView; // Save the reference to the webview view
+        this._view = webviewView;
 
-        // Enable scripts within the webview
         webviewView.webview.options = {
             enableScripts: true, // Allows JavaScript execution in the webview
         };
 
-        // Resolve the URI for the external stylesheet
+        // Load external stylesheet
         const styleUri = webviewView.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css') // Path to the CSS file in the assets folder
+            vscode.Uri.joinPath(this.context.extensionUri, 'assets', 'style.css')
         );
 
         // Set the initial content of the webview
@@ -51,37 +52,40 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(async (message) => {
             if (message.command === 'getAIAnalysis') {
-                const activeEditor = vscode.window.activeTextEditor; // Get the active editor
+                const activeEditor = vscode.window.activeTextEditor;
                 if (!activeEditor) {
                     vscode.window.showErrorMessage('No active editor found. Open a file to get feedback on your code.');
                     this.postMessage('No file selected', 'Please open a file to analyze.');
                     return;
                 }
 
-                const fileName = activeEditor.document.fileName; // Get the file name
-                const extension = this.getFileExtension(fileName); // Get the file extension
+                const fileName = activeEditor.document.fileName;
+                const extension = this.getFileExtension(fileName);
 
-                // Check if the file extension is supported
+                // Check if the file type is supported
                 if (!this.supportedExtensions.includes(extension)) {
                     vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
                     this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
                     return;
                 }
 
-                const fileContent = activeEditor.document.getText(); // Get the content of the active file
+                const fileContent = activeEditor.document.getText();
 
-                // Limit the file content to 2048 characters (approx. 800 tokens)
+                // Limit file content to 2048 characters
                 const truncatedContent = fileContent.length > 2048
                     ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
                     : fileContent;
 
-                // Construct the prompt for OpenAI
+                // Construct AI prompt
                 const prompt = `Review the following code and categorize the feedback into: Serious Problems, Warnings, Refactoring Suggestions, Coding Conventions, Performance Optimization, Security Issues, Best Practices, Readability and Maintainability, Code Smells, and Educational Tips.\n\n${truncatedContent}`;
 
-                // Call OpenAI API and get the response
+                // Show loading message
+                this.postMessage(this.getShortFileName(fileName), "⏳ Analyzing your code... Please wait.");
+
+                // Call OpenAI API
                 const response = await getAIResponse(prompt);
 
-                // Post the filename and response back to the webview
+                // Post AI response to webview
                 this.postMessage(this.getShortFileName(fileName), response);
             }
         });
@@ -105,67 +109,24 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         this._view?.webview.postMessage({ command: 'displayFileInfo', filename, response });
     }
 
-    // Helper method to get the short file name from a full path
+    // Helper method to get short file name
     private getShortFileName(filePath: string): string {
         return filePath.split(/[\\/]/).pop() || 'Unknown File';
     }
 
-    // Helper method to get the file extension
+    // Helper method to get file extension
     private getFileExtension(filePath: string): string {
         return filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
     }
 
-    // Method to generate HTML content for the webview
+    // Generate HTML content for the webview
     private getHtmlContent(styleUri: vscode.Uri): string {
-        return `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>AI Coding Assistant</title>
-                <link rel="stylesheet" href="${styleUri}">
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 10px; text-align: center; }
-                    button { margin: 5px; padding: 10px; }
-                    .info { margin-top: 20px; text-align: left; white-space: pre-wrap; }
-                    .category { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
-                    .category h2 { color: #007acc; }
-                </style>
-            </head>
-            <body>
-                <h1>AI Coding Assistant</h1>
-                <p>Click the button to get feedback on your open file.</p>
-                <button onclick="sendRequest()">Get Feedback</button>
-                <div class="info">
-                    <strong>Currently Targeting:</strong> <span id="filename">None</span>
-                </div>
-                <div id="response" class="info"></div>
-
-                <script>
-                    const vscode = acquireVsCodeApi();
-
-                    function sendRequest() {
-                        vscode.postMessage({ command: 'getAIAnalysis' });
-                    }
-
-                    window.addEventListener('message', (event) => {
-                        const message = event.data;
-                        if (message.command === 'displayFileInfo') {
-                            document.getElementById('filename').innerText = message.filename;
-                            document.getElementById('response').innerHTML = formatResponse(message.response);
-                        }
-                    });
-
-                    function formatResponse(response) {
-                        return response
-                            .split(/\\n(?=### )/)
-                            .map(section => \`<div class="category">\${section.trim().replace(/### (.*)/, '<h2>$1</h2>')}</div>\`)
-                            .join('');
-                    }
-                </script>
-            </body>
-            </html>
-        `;
+        const htmlPath = path.join(this.context.extensionUri.fsPath, 'assets', 'webview.html');
+        let htmlContent = fs.readFileSync(htmlPath, 'utf8');
+    
+        // Replace placeholders with dynamic values
+        htmlContent = htmlContent.replace('{{styleUri}}', styleUri.toString());
+    
+        return htmlContent;
     }
 }
