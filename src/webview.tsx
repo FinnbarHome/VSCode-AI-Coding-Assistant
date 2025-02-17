@@ -80,15 +80,20 @@ const VSCodeWebview: React.FC = () => {
                 <button onClick={sendRequest} style={{
                     backgroundColor: "#007acc",
                     color: "white",
-                    padding: "10px 15px",
-                    borderRadius: "5px",
+                    padding: "12px 18px",
+                    borderRadius: "6px",
                     fontSize: "16px",
-                    marginBottom: "15px"
+                    marginBottom: "25px", 
+                    boxShadow: "0px 2px 5px rgba(0, 122, 204, 0.4)" 
                 }}>
                     Get Feedback
                 </button>
 
-                <div className="info">
+                <div className="info" style={{
+                    marginBottom: "20px", 
+                    fontSize: "14px",
+                    color: "#bbbbbb"
+                }}>
                     <strong>Currently Targeting:</strong> <span>{filename}</span>
                 </div>
 
