@@ -13,10 +13,16 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ title, content }) => 
             border: "1px solid #444",
             padding: "12px",
             borderRadius: "8px",
-            marginBottom: "12px", 
+            marginBottom: "12px",
             transition: "all 0.3s ease-in-out",
-            boxShadow: "0px 4px 8px rgba(0, 122, 204, 0.2)"
-        }}>        
+            boxShadow: "0px 4px 8px rgba(0, 122, 204, 0.2)",
+            width: "100%", 
+            maxWidth: "500px", 
+            minWidth: "400px", 
+            marginLeft: "auto",
+            marginRight: "auto"  
+        }}>
+        
             <summary style={{
                 fontSize: "18px",
                 fontWeight: "bold",
