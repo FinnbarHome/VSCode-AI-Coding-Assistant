@@ -6,7 +6,7 @@
     border-radius: 6px;
     box-shadow: 0px 4px 10px rgba(0, 122, 204, 0.3);
     width: 100%;
-    max-width: 600px; /* Ensures it aligns with other sections */
+    max-width: 600px; 
 }
 
 .header h1 {
