@@ -1,5 +1,4 @@
 import * as React from "react";
-import { useEffect, useState } from "react";
 import * as ReactDOM from "react-dom/client";
 import Header from "./components/Header";
 import FeedbackSection from "./components/FeedbackSection";
@@ -9,8 +8,8 @@ declare const acquireVsCodeApi: () => any;
 const vscode = acquireVsCodeApi();
 
 const VSCodeWebview: React.FC = () => {
-    const [filename, setFilename] = useState<string>("None");
-    const [feedback, setFeedback] = useState<Record<string, string[]>>({
+    const [filename, setFilename] = React.useState<string>("None");
+    const [feedback, setFeedback] = React.useState<Record<string, string[]>>({
         "Serious Problems": [],
         "Warnings": [],
         "Refactoring Suggestions": [],
@@ -23,7 +22,7 @@ const VSCodeWebview: React.FC = () => {
         "Educational Tips": []
     });
 
-    useEffect(() => {
+    React.useEffect(() => {
         const messageHandler = (event: MessageEvent) => {
             const message = event.data;
             if (message.command === "displayFileInfo") {
@@ -74,35 +73,35 @@ const VSCodeWebview: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: "10px", textAlign: "center", background: "#1e1e1e", color: "#ffffff" }}>
-            <Header />
+        <React.StrictMode>
+            <div style={{ padding: "10px", textAlign: "center", background: "#1e1e1e", color: "#ffffff" }}>
+                <Header />
 
-            <button
-                onClick={sendRequest}
-                style={{
+                <button onClick={sendRequest} style={{
                     backgroundColor: "#007acc",
                     color: "white",
                     padding: "10px 15px",
                     borderRadius: "5px",
-                    fontSize: "16px"
+                    fontSize: "16px",
+                    marginBottom: "15px"
                 }}>
-                Get Feedback
-            </button>
+                    Get Feedback
+                </button>
 
-            <div className="info">
-                <strong>Currently Targeting:</strong> <span>{filename}</span>
-            </div>
+                <div className="info">
+                    <strong>Currently Targeting:</strong> <span>{filename}</span>
+                </div>
 
-            <div id="response" className="info">
-                {Object.keys(feedback).map(category => (
-                    <FeedbackSection key={category} title={category} content={feedback[category]} />
-                ))}
+                <div id="response" className="info">
+                    {Object.keys(feedback).map(category => (
+                        <FeedbackSection key={category} title={category} content={feedback[category]} />
+                    ))}
+                </div>
             </div>
-        </div>
+        </React.StrictMode>
     );
 };
 
-// Render React into WebView
 const rootElement = document.getElementById("root");
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);

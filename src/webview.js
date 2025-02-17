@@ -37,14 +37,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsx_runtime_1 = require("react/jsx-runtime");
-const react_1 = require("react");
+const React = __importStar(require("react"));
 const ReactDOM = __importStar(require("react-dom/client"));
 const Header_1 = __importDefault(require("./components/Header"));
 const FeedbackSection_1 = __importDefault(require("./components/FeedbackSection"));
 const vscode = acquireVsCodeApi();
 const VSCodeWebview = () => {
-    const [filename, setFilename] = (0, react_1.useState)("None");
-    const [feedback, setFeedback] = (0, react_1.useState)({
+    const [filename, setFilename] = React.useState("None");
+    const [feedback, setFeedback] = React.useState({
         "Serious Problems": [],
         "Warnings": [],
         "Refactoring Suggestions": [],
@@ -56,7 +56,7 @@ const VSCodeWebview = () => {
         "Code Smells": [],
         "Educational Tips": []
     });
-    (0, react_1.useEffect)(() => {
+    React.useEffect(() => {
         const messageHandler = (event) => {
             const message = event.data;
             if (message.command === "displayFileInfo") {
@@ -97,15 +97,16 @@ const VSCodeWebview = () => {
         });
         setFeedback(parsedFeedback);
     };
-    return ((0, jsx_runtime_1.jsxs)("div", { style: { padding: "10px", textAlign: "center", background: "#1e1e1e", color: "#ffffff" }, children: [(0, jsx_runtime_1.jsx)(Header_1.default, {}), (0, jsx_runtime_1.jsx)("button", { onClick: sendRequest, style: {
-                    backgroundColor: "#007acc",
-                    color: "white",
-                    padding: "10px 15px",
-                    borderRadius: "5px",
-                    fontSize: "16px"
-                }, children: "Get Feedback" }), (0, jsx_runtime_1.jsxs)("div", { className: "info", children: [(0, jsx_runtime_1.jsx)("strong", { children: "Currently Targeting:" }), " ", (0, jsx_runtime_1.jsx)("span", { children: filename })] }), (0, jsx_runtime_1.jsx)("div", { id: "response", className: "info", children: Object.keys(feedback).map(category => ((0, jsx_runtime_1.jsx)(FeedbackSection_1.default, { title: category, content: feedback[category] }, category))) })] }));
+    return ((0, jsx_runtime_1.jsx)(React.StrictMode, { children: (0, jsx_runtime_1.jsxs)("div", { style: { padding: "10px", textAlign: "center", background: "#1e1e1e", color: "#ffffff" }, children: [(0, jsx_runtime_1.jsx)(Header_1.default, {}), (0, jsx_runtime_1.jsx)("button", { onClick: sendRequest, style: {
+                        backgroundColor: "#007acc",
+                        color: "white",
+                        padding: "10px 15px",
+                        borderRadius: "5px",
+                        fontSize: "16px",
+                        marginBottom: "15px"
+                    }, children: "Get Feedback" }), (0, jsx_runtime_1.jsxs)("div", { className: "info", children: [(0, jsx_runtime_1.jsx)("strong", { children: "Currently Targeting:" }), " ", (0, jsx_runtime_1.jsx)("span", { children: filename })] }), (0, jsx_runtime_1.jsx)("div", { id: "response", className: "info", children: Object.keys(feedback).map(category => ((0, jsx_runtime_1.jsx)(FeedbackSection_1.default, { title: category, content: feedback[category] }, category))) })] }) }));
 };
-// Render React into WebView
+// Fix rendering
 const rootElement = document.getElementById("root");
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);

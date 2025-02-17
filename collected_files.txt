@@ -1,0 +1,1022 @@
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\tsconfig.json
+========================================
+{
+	"compilerOptions": {
+	  "target": "ES6",
+	  "lib": ["DOM", "ES6"],
+	  "module": "CommonJS",
+	  "jsx": "react-jsx",
+	  "strict": true,
+	  "esModuleInterop": true,
+	  "forceConsistentCasingInFileNames": true,
+	  "skipLibCheck": true
+	}
+  }
+  
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\webpack.config.js
+========================================
+const path = require('path');
+
+module.exports = {
+    mode: 'development',
+    entry: './src/webview.tsx',
+    output: {
+        path: path.resolve(__dirname, 'out'),
+        filename: 'webview.js',
+        libraryTarget: 'umd' // Required for VSCode Webview
+    },
+    module: {
+        rules: [
+            {
+                test: /\.(ts|tsx)$/,
+                exclude: /node_modules/,
+                use: 'ts-loader'
+            }
+        ]
+    },
+    resolve: {
+        extensions: ['.ts', '.tsx', '.js']
+    },
+    externals: {
+        vscode: 'commonjs vscode' // Ensure VSCode modules load correctly
+    }
+};
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\package.json
+========================================
+{
+  "name": "vscode-ai-coding-assistant",
+  "displayName": "VSCode AI Coding Assistant",
+  "description": "AI-powered coding assistant focused on activity view.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.readFileContent",
+        "title": "Read File Content"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiCodingAssistant",
+          "title": "AI Assistant",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiCodingAssistant": [
+        {
+          "id": "aiCodingView",
+          "name": "AI Coding View",
+          "type": "webview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "build:webview": "webpack",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.9",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.13.0",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.6.3",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "classnames": "^2.5.1",
+    "dotenv": "^16.4.7",
+    "lucide-react": "^0.475.0",
+    "openai": "^4.73.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\.vscode\tasks.json
+========================================
+// See https://go.microsoft.com/fwlink/?LinkId=733558
+// for the documentation about the tasks.json format
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "watch",
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"presentation": {
+				"reveal": "never"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	]
+}
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\.vscode\launch.json
+========================================
+// A launch configuration that compiles the extension and then opens it inside a new window
+// Use IntelliSense to learn about possible attributes.
+// Hover to view descriptions of existing attributes.
+// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Run Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+			"preLaunchTask": "${defaultBuildTask}"
+		}
+	]
+}
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\assets\script.js
+========================================
+const vscode = acquireVsCodeApi();
+
+function sendRequest() {
+    const responseElement = document.getElementById('response');
+
+    // Keep only the "Loading..." message while AI processes
+    responseElement.innerHTML = `
+        <p style="color: #61dafb;">⏳ Analyzing your code... Please wait.</p>
+    `;
+
+    vscode.postMessage({ command: 'getAIAnalysis' });
+}
+
+window.addEventListener('message', (event) => {
+    const message = event.data;
+
+    if (message.command === 'displayFileInfo') {
+        document.getElementById('filename').innerText = message.filename;
+
+        // Wait until AI response is fully processed before updating UI
+        if (message.response && message.response.trim().length > 0) {
+            processAIResponse(message.response);
+        }
+    }
+});
+
+function processAIResponse(response) {
+    const responseElement = document.getElementById('response');
+
+    // Ensure loading message is kept until response is fully processed
+    setTimeout(() => {
+        responseElement.innerHTML = formatResponse(response);
+    }, 100); // Small delay to ensure smooth transition
+}
+
+function formatResponse(response) {
+    if (!response || response.trim().length === 0) {
+        return ""; // Keep "Loading..." until we get a valid response
+    }
+
+    // Define the expected 10 categories
+    const categories = {
+        "Serious Problems": "",
+        "Warnings": "",
+        "Refactoring Suggestions": "",
+        "Coding Conventions": "",
+        "Performance Optimization": "",
+        "Security Issues": "",
+        "Best Practices": "",
+        "Readability and Maintainability": "",
+        "Code Smells": "",
+        "Educational Tips": ""
+    };
+
+    let currentCategory = null;
+
+    // Process AI response properly
+    response.split(/\n(?=#### )/).forEach(section => {
+        const titleMatch = section.match(/#### (.+)/);
+        const title = titleMatch ? titleMatch[1].trim() : null;
+
+        if (title && categories.hasOwnProperty(title)) {
+            currentCategory = title;
+        }
+
+        if (currentCategory) {
+            // Append content under the correct category
+            let content = section.replace(/#### .*/, '').trim();
+
+            // Ensure all bullet points use `-` (force consistency)
+            content = content.replace(/\n\d+\./g, "\n-"); // Convert numbered lists (1., 2.) to `-`
+            content = content.replace(/\n\*/g, "\n-"); // Convert `*` bullets to `-`
+
+            // Format bullet points for better readability
+            content = content.replace(/-\s/g, '<li>') + '</li>';
+            content = `<ul>${content}</ul>`;
+
+            categories[currentCategory] += content;
+        }
+    });
+
+    console.log("Parsed Sections:", categories); // Debugging
+
+    // Generate collapsible sections with improved styling
+    return Object.keys(categories)
+        .map(category => {
+            const content = categories[category].trim();
+
+            return content.length > 0
+                ? `
+                <details class="category">
+                    <summary>${category}</summary>
+                    <div class="content">
+                        ${content}
+                    </div>
+                </details>
+                ` : "";
+        })
+        .join('');
+}
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\assets\style.css
+========================================
+/* Dark Theme Styling */
+body {
+    font-family: Arial, sans-serif;
+    padding: 10px;
+    text-align: center;
+    background-color: #1e1e1e;  
+    color: #ffffff;  
+}
+
+/* Headings */
+h1 {
+    color: #007acc; 
+}
+
+/* Paragraphs */
+p {
+    font-size: 14px;
+    color: #8a8bca;
+}
+
+/* Buttons */
+button {
+    background-color: #007acc;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: 0.3s ease;
+}
+
+button:hover {
+    background-color: #005f99;
+    transform: scale(1.05);
+}
+
+/* Information Box */
+.info {
+    margin-top: 20px;
+    text-align: left;
+    white-space: pre-wrap;
+    background: #252526;
+    padding: 10px;
+    border-radius: 5px;
+    border-left: 4px solid #007acc;
+}
+
+/* Collapsible Sections */
+.category {
+    margin-top: 10px; /* Reduced from 15px */
+    border: 1px solid #444;
+    background: #252526;
+    padding: 12px; 
+    border-radius: 8px;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0px 4px 8px rgba(0, 122, 204, 0.2);
+}
+
+.category:hover {
+    border-color: #007acc;
+    box-shadow: 0 0 10px rgba(0, 122, 204, 0.5);
+}
+
+/* Section Titles */
+.category summary {
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #ffffff;
+    padding: 6px 10px; /* Reduced padding */
+    margin-bottom: 2px; /* Reduce space below title */
+}
+
+.category summary:hover {
+    color: #007acc;
+}
+
+/* Content inside collapsible sections */
+.category .content {
+    margin-top: 0px; /* Removed extra spacing */
+    padding: 8px; /* Slightly reduced padding */
+    color: #cccccc;
+}
+
+/* Bullet Points */
+.category ul {
+    list-style-type: none;
+    padding-left: 10px; /* Reduced padding */
+    margin-top: 2px; /* Reduce gap between title and list */
+}
+
+.category ul li {
+    background: rgba(0, 122, 204, 0.2);
+    border-radius: 5px;
+    padding: 6px 10px; /* Reduced padding */
+    margin: 3px 0; /* Reduced space between bullet points */
+    color: #ffffff;
+    display: block;
+    transition: 0.2s ease-in-out;
+}
+
+.category ul li:hover {
+    background: rgba(0, 122, 204, 0.4);
+}
+
+/* Code Blocks */
+pre {
+    background: #282c34;
+    color: #abb2bf;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+/* Inline Code */
+code {
+    font-family: "Courier New", monospace;
+    color: #61dafb; 
+}
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\assets\webview.html
+========================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Coding Assistant</title>
+    <link rel="stylesheet" href="{{styleUri}}">
+</head>
+<body>
+    <h1>AI Coding Assistant</h1>
+    <p>Click the button to get feedback on your open file.</p>
+
+    <button onclick="sendRequest()">Get Feedback</button>
+
+    <div class="info">
+        <strong>Currently Targeting:</strong> <span id="filename">None</span>
+    </div>
+
+    <!-- This div is empty at first and gets populated dynamically -->
+    <div id="response" class="info"></div>
+
+    <script src="{{scriptUri}}"></script>
+</body>
+</html>
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\ai.ts
+========================================
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
+import * as path from 'path';
+
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '../.env') }); 
+
+const apiKey = process.env.OPENAI_API_KEY;
+
+if (!apiKey) {
+    console.error("❌ OpenAI API Key is missing! Check your .env file.");
+    throw new Error("OpenAI API Key not found. Make sure you have a valid `.env` file.");
+}
+
+// Initialize OpenAI instance
+const openai = new OpenAI({ apiKey });
+
+export async function getAIResponse(prompt: string): Promise<string> {
+    try {
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: `You are a strict AI code reviewer. Your response **must be structured into exactly 10 sections** using the format below:
+
+                    #### Serious Problems
+                    (List problems here, or write "No issues found.")
+
+                    #### Warnings
+                    (List warnings here, or write "No issues found.")
+
+                    #### Refactoring Suggestions
+                    (List suggestions here, or write "No issues found.")
+
+                    #### Coding Conventions
+                    (List convention violations here, or write "No issues found.")
+
+                    #### Performance Optimization
+                    (List optimizations here, or write "No issues found.")
+
+                    #### Security Issues
+                    (List security concerns here, or write "No issues found.")
+
+                    #### Best Practices
+                    (List best practices here, or write "No issues found.")
+
+                    #### Readability and Maintainability
+                    (List readability concerns here, or write "No issues found.")
+
+                    #### Code Smells
+                    (List code smells here, or write "No issues found.")
+
+                    #### Educational Tips
+                    (Provide useful coding tips, or write "No issues found.")
+
+                    - ❌ Do **not** add introductions, summaries, or extra text.
+                    - ❌ Do **not** create additional sections.
+                    - ✅ Format all section headers exactly as shown (**#### Category Name**).`
+                },
+                { role: "user", content: prompt },
+            ],
+        });
+
+        const content = completion.choices[0]?.message?.content ?? "No response from AI.";
+        return content.trim();
+    } catch (error) {
+        console.error("Error with OpenAI API:", error);
+        return "Sorry, I couldn't process your request.";
+    }
+}
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\extension.ts
+========================================
+import * as vscode from 'vscode';
+import { getAIResponse } from './ai';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Function called when the extension is activated
+export function activate(context: vscode.ExtensionContext) {
+    console.log('AI Coding Assistant is now active!');
+
+    // Register the webview view provider for the activity bar view
+    const provider = new AICodingWebviewViewProvider(context);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            'aiCodingView', // ID of view to link provider with (matches id in package.json)
+            provider // Create an instance of the provider class
+        )
+    );
+
+    // Update the webview whenever a new file is selected
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (editor && provider.getView()) {
+            provider.updateTargetFile(editor.document.fileName);
+        }
+    });
+}
+
+// For cleanup, called when the extension is deactivated
+export function deactivate() {}
+
+class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
+    private _view?: vscode.WebviewView;
+    private supportedExtensions = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md'];
+
+    constructor(private readonly context: vscode.ExtensionContext) {}
+
+    // Automatically triggered when a user clicks on the activity bar
+    resolveWebviewView(webviewView: vscode.WebviewView) {
+        this._view = webviewView;
+    
+        webviewView.webview.options = {
+            enableScripts: true, // Allows JavaScript execution in the webview
+        };
+    
+        // Set the initial content of the webview
+        const scriptUri = webviewView.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.context.extensionUri, "out", "webview.js")
+        );
+        
+        webviewView.webview.html = this.getHtmlContent(scriptUri);
+        
+    
+        // Handle messages from the webview
+        webviewView.webview.onDidReceiveMessage(async (message) => {
+            if (message.command === 'getAIAnalysis') {
+                const activeEditor = vscode.window.activeTextEditor;
+                if (!activeEditor) {
+                    vscode.window.showErrorMessage('No active editor found. Open a file to get feedback on your code.');
+                    this.postMessage('No file selected', 'Please open a file to analyze.');
+                    return;
+                }
+    
+                const fileName = activeEditor.document.fileName;
+                const extension = this.getFileExtension(fileName);
+    
+                // Check if the file type is supported
+                if (!this.supportedExtensions.includes(extension)) {
+                    vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
+                    this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
+                    return;
+                }
+    
+                const fileContent = activeEditor.document.getText();
+    
+                // Limit file content to 2048 characters
+                const truncatedContent = fileContent.length > 2048
+                    ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
+                    : fileContent;
+    
+                // Construct AI prompt
+                const prompt = `Review the following code and categorize the feedback into: Serious Problems, Warnings, Refactoring Suggestions, Coding Conventions, Performance Optimization, Security Issues, Best Practices, Readability and Maintainability, Code Smells, and Educational Tips.\n\n${truncatedContent}`;
+    
+                // Show loading message
+                this.postMessage(this.getShortFileName(fileName), "⏳ Analyzing your code... Please wait.");
+    
+                // Call OpenAI API
+                const response = await getAIResponse(prompt);
+    
+                // Post AI response to webview
+                this.postMessage(this.getShortFileName(fileName), response);
+            }
+        });
+    }
+    
+
+    // Get the webview instance
+    getView() {
+        return this._view;
+    }
+
+    // Update the targeted file in the webview
+    updateTargetFile(filePath: string) {
+        const shortName = this.getShortFileName(filePath);
+        if (this._view) {
+            this.postMessage(shortName, `Target file updated to: ${shortName}`);
+        }
+    }
+
+    // Helper method to send messages to the webview
+    private postMessage(filename: string, response: string) {
+        this._view?.webview.postMessage({ command: 'displayFileInfo', filename, response });
+    }
+
+    // Helper method to get short file name
+    private getShortFileName(filePath: string): string {
+        return filePath.split(/[\\/]/).pop() || 'Unknown File';
+    }
+
+    // Helper method to get file extension
+    private getFileExtension(filePath: string): string {
+        return filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
+    }
+    
+    // Generate React-based WebView HTML
+    private getHtmlContent(scriptUri: vscode.Uri): string {
+        return `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>AI Coding Assistant</title>
+                <style>
+                    body { margin: 0; padding: 0; background: #1e1e1e; color: white; font-family: Arial, sans-serif; }
+                    #root { display: flex; justify-content: center; align-items: center; height: 100vh; }
+                </style>
+            </head>
+            <body>
+                <div id="root"></div>
+                <script src="${scriptUri}"></script>
+            </body>
+            </html>
+        `;
+    }
+
+    
+
+    
+    
+}
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\webview.tsx
+========================================
+import * as React from "react";
+import * as ReactDOM from "react-dom/client";
+import Header from "./components/Header";
+import FeedbackSection from "./components/FeedbackSection";
+
+// Acquire VSCode API
+declare const acquireVsCodeApi: () => any;
+const vscode = acquireVsCodeApi();
+
+const VSCodeWebview: React.FC = () => {
+    const [filename, setFilename] = React.useState<string>("None");
+    const [feedback, setFeedback] = React.useState<Record<string, string[]>>({
+        "Serious Problems": [],
+        "Warnings": [],
+        "Refactoring Suggestions": [],
+        "Coding Conventions": [],
+        "Performance Optimization": [],
+        "Security Issues": [],
+        "Best Practices": [],
+        "Readability and Maintainability": [],
+        "Code Smells": [],
+        "Educational Tips": []
+    });
+
+    React.useEffect(() => {
+        const messageHandler = (event: MessageEvent) => {
+            const message = event.data;
+            if (message.command === "displayFileInfo") {
+                setFilename(message.filename);
+                processAIResponse(message.response);
+            }
+        };
+
+        window.addEventListener("message", messageHandler);
+        return () => window.removeEventListener("message", messageHandler);
+    }, []);
+
+    const sendRequest = () => {
+        vscode.postMessage({ command: "getAIAnalysis" });
+    };
+
+    const processAIResponse = (response: string) => {
+        const parsedFeedback: Record<string, string[]> = {
+            "Serious Problems": [],
+            "Warnings": [],
+            "Refactoring Suggestions": [],
+            "Coding Conventions": [],
+            "Performance Optimization": [],
+            "Security Issues": [],
+            "Best Practices": [],
+            "Readability and Maintainability": [],
+            "Code Smells": [],
+            "Educational Tips": []
+        };
+
+        let currentCategory: string | null = null;
+
+        response.split(/\n(?=#### )/).forEach(section => {
+            const titleMatch = section.match(/#### (.+)/);
+            const title = titleMatch ? titleMatch[1].trim() : null;
+
+            if (title && parsedFeedback.hasOwnProperty(title)) {
+                currentCategory = title;
+            }
+
+            if (currentCategory) {
+                let content = section.replace(/#### .*/, "").trim();
+                parsedFeedback[currentCategory] = content.split("\n").filter(item => item.trim().length > 0);
+            }
+        });
+
+        setFeedback(parsedFeedback);
+    };
+
+    return (
+        <React.StrictMode>
+            <div style={{ padding: "10px", textAlign: "center", background: "#1e1e1e", color: "#ffffff" }}>
+                <Header />
+
+                <button onClick={sendRequest} style={{
+                    backgroundColor: "#007acc",
+                    color: "white",
+                    padding: "10px 15px",
+                    borderRadius: "5px",
+                    fontSize: "16px",
+                    marginBottom: "15px"
+                }}>
+                    Get Feedback
+                </button>
+
+                <div className="info">
+                    <strong>Currently Targeting:</strong> <span>{filename}</span>
+                </div>
+
+                <div id="response" className="info">
+                    {Object.keys(feedback).map(category => (
+                        <FeedbackSection key={category} title={category} content={feedback[category]} />
+                    ))}
+                </div>
+            </div>
+        </React.StrictMode>
+    );
+};
+
+// Fix rendering
+const rootElement = document.getElementById("root");
+if (rootElement) {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<VSCodeWebview />);
+}
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\components\BulletPoint.tsx
+========================================
+import React from "react";
+import { CheckCircle, AlertCircle } from "lucide-react";
+
+interface BulletPointProps {
+    text: string;
+    type?: "error" | "warning" | "info";
+}
+
+const BulletPoint: React.FC<BulletPointProps> = ({ text, type = "info" }) => {
+    const iconStyles = { width: 18, height: 18, marginRight: 8 };
+
+    const getIcon = () => {
+        switch (type) {
+            case "error": return <AlertCircle color="#f87171" style={iconStyles} />;
+            case "warning": return <AlertCircle color="#facc15" style={iconStyles} />;
+            default: return <CheckCircle color="#10b981" style={iconStyles} />;
+        }
+    };
+
+    return (
+        <div style={{
+            display: "flex",
+            alignItems: "center",
+            backgroundColor: "rgba(0, 122, 204, 0.2)",
+            borderRadius: "5px",
+            padding: "6px 10px",
+            margin: "4px 0",
+            color: "#ffffff"
+        }}>
+            {getIcon()}
+            {text}
+        </div>
+    );
+};
+
+export default BulletPoint;
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\components\FeedbackSection.tsx
+========================================
+import React from "react";
+import BulletPoint from "./BulletPoint";
+
+interface FeedbackSectionProps {
+    title: string;
+    content: string[];
+}
+
+const FeedbackSection: React.FC<FeedbackSectionProps> = ({ title, content }) => {
+    return (
+        <details style={{
+            backgroundColor: "#252526",
+            border: "1px solid #444",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "10px",
+            transition: "all 0.3s ease-in-out",
+            boxShadow: "0px 4px 8px rgba(0, 122, 204, 0.2)"
+        }}>
+            <summary style={{
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                color: "#ffffff",
+                padding: "6px 10px"
+            }}>
+                {title}
+            </summary>
+            <div style={{ marginTop: "8px", paddingLeft: "10px" }}>
+                {content.length > 0
+                    ? content.map((item, index) => <BulletPoint key={index} text={item} />)
+                    : <p style={{ color: "gray", fontSize: "14px" }}>✅ No issues found.</p>}
+            </div>
+        </details>
+    );
+};
+
+export default FeedbackSection;
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\components\Header.tsx
+========================================
+import React from "react";
+
+const Header: React.FC = () => {
+    return (
+        <header style={{
+            textAlign: "center",
+            padding: "15px",
+            backgroundColor: "#252526",
+            borderRadius: "8px",
+            boxShadow: "0px 4px 10px rgba(0, 122, 204, 0.3)"
+        }}>
+            <h1 style={{ color: "#61dafb", fontSize: "22px", fontWeight: "bold" }}>
+                AI Coding Assistant
+            </h1>
+            <p style={{ color: "#cccccc" }}>
+                Get instant feedback on your code.
+            </p>
+        </header>
+    );
+};
+
+export default Header;
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\test\extension.test.ts
+========================================
+import * as assert from 'assert';
+
+// You can import and use all API from the 'vscode' module
+// as well as import your extension to test it
+import * as vscode from 'vscode';
+// import * as myExtension from '../../extension';
+
+suite('Extension Test Suite', () => {
+	vscode.window.showInformationMessage('Start all tests.');
+
+	test('Sample test', () => {
+		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
+		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
+	});
+});
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\components\BulletPoint.tsx
+========================================
+import React from "react";
+import { CheckCircle, AlertCircle } from "lucide-react";
+
+interface BulletPointProps {
+    text: string;
+    type?: "error" | "warning" | "info";
+}
+
+const BulletPoint: React.FC<BulletPointProps> = ({ text, type = "info" }) => {
+    const iconStyles = { width: 18, height: 18, marginRight: 8 };
+
+    const getIcon = () => {
+        switch (type) {
+            case "error": return <AlertCircle color="#f87171" style={iconStyles} />;
+            case "warning": return <AlertCircle color="#facc15" style={iconStyles} />;
+            default: return <CheckCircle color="#10b981" style={iconStyles} />;
+        }
+    };
+
+    return (
+        <div style={{
+            display: "flex",
+            alignItems: "center",
+            backgroundColor: "rgba(0, 122, 204, 0.2)",
+            borderRadius: "5px",
+            padding: "6px 10px",
+            margin: "4px 0",
+            color: "#ffffff"
+        }}>
+            {getIcon()}
+            {text}
+        </div>
+    );
+};
+
+export default BulletPoint;
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\components\FeedbackSection.tsx
+========================================
+import React from "react";
+import BulletPoint from "./BulletPoint";
+
+interface FeedbackSectionProps {
+    title: string;
+    content: string[];
+}
+
+const FeedbackSection: React.FC<FeedbackSectionProps> = ({ title, content }) => {
+    return (
+        <details style={{
+            backgroundColor: "#252526",
+            border: "1px solid #444",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "10px",
+            transition: "all 0.3s ease-in-out",
+            boxShadow: "0px 4px 8px rgba(0, 122, 204, 0.2)"
+        }}>
+            <summary style={{
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                color: "#ffffff",
+                padding: "6px 10px"
+            }}>
+                {title}
+            </summary>
+            <div style={{ marginTop: "8px", paddingLeft: "10px" }}>
+                {content.length > 0
+                    ? content.map((item, index) => <BulletPoint key={index} text={item} />)
+                    : <p style={{ color: "gray", fontSize: "14px" }}>✅ No issues found.</p>}
+            </div>
+        </details>
+    );
+};
+
+export default FeedbackSection;
+
+
+========================================
+FILE: C:\Users\TheGu\Documents\GitHub\CodeAssistant\VSCode-AI-Coding-Assistant\src\components\Header.tsx
+========================================
+import React from "react";
+
+const Header: React.FC = () => {
+    return (
+        <header style={{
+            textAlign: "center",
+            padding: "15px",
+            backgroundColor: "#252526",
+            borderRadius: "8px",
+            boxShadow: "0px 4px 10px rgba(0, 122, 204, 0.3)"
+        }}>
+            <h1 style={{ color: "#61dafb", fontSize: "22px", fontWeight: "bold" }}>
+                AI Coding Assistant
+            </h1>
+            <p style={{ color: "#cccccc" }}>
+                Get instant feedback on your code.
+            </p>
+        </header>
+    );
+};
+
+export default Header;
+

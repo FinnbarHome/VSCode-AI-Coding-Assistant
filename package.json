@@ -44,7 +44,6 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src",
     "test": "vscode-test"
-  
   },
   "devDependencies": {
     "@types/mocha": "^10.0.9",
@@ -63,7 +62,9 @@
   "dependencies": {
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "classnames": "^2.5.1",
     "dotenv": "^16.4.7",
+    "lucide-react": "^0.475.0",
     "openai": "^4.73.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

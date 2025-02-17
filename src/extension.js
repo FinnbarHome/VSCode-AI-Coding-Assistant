@@ -134,7 +134,7 @@ class AICodingWebviewViewProvider {
     getFileExtension(filePath) {
         return filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
     }
-    // Load React-based WebView HTML
+    // Generate React-based WebView HTML
     getHtmlContent(scriptUri) {
         return `
             <!DOCTYPE html>
@@ -143,6 +143,10 @@ class AICodingWebviewViewProvider {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>AI Coding Assistant</title>
+                <style>
+                    body { margin: 0; padding: 0; background: #1e1e1e; color: white; font-family: Arial, sans-serif; }
+                    #root { display: flex; justify-content: center; align-items: center; height: 100vh; }
+                </style>
             </head>
             <body>
                 <div id="root"></div>
