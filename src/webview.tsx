@@ -1,6 +1,8 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import * as ReactDOM from "react-dom/client";
+import Header from "./components/Header";
+import FeedbackSection from "./components/FeedbackSection";
 
 // Acquire VSCode API
 declare const acquireVsCodeApi: () => any;
@@ -8,14 +10,25 @@ const vscode = acquireVsCodeApi();
 
 const VSCodeWebview: React.FC = () => {
     const [filename, setFilename] = useState<string>("None");
-    const [response, setResponse] = useState<string | null>(null);
+    const [feedback, setFeedback] = useState<Record<string, string[]>>({
+        "Serious Problems": [],
+        "Warnings": [],
+        "Refactoring Suggestions": [],
+        "Coding Conventions": [],
+        "Performance Optimization": [],
+        "Security Issues": [],
+        "Best Practices": [],
+        "Readability and Maintainability": [],
+        "Code Smells": [],
+        "Educational Tips": []
+    });
 
     useEffect(() => {
         const messageHandler = (event: MessageEvent) => {
             const message = event.data;
             if (message.command === "displayFileInfo") {
                 setFilename(message.filename);
-                setResponse(message.response);
+                processAIResponse(message.response);
             }
         };
 
@@ -24,14 +37,45 @@ const VSCodeWebview: React.FC = () => {
     }, []);
 
     const sendRequest = () => {
-        setResponse("⏳ Analyzing your code... Please wait.");
         vscode.postMessage({ command: "getAIAnalysis" });
+    };
+
+    const processAIResponse = (response: string) => {
+        const parsedFeedback: Record<string, string[]> = {
+            "Serious Problems": [],
+            "Warnings": [],
+            "Refactoring Suggestions": [],
+            "Coding Conventions": [],
+            "Performance Optimization": [],
+            "Security Issues": [],
+            "Best Practices": [],
+            "Readability and Maintainability": [],
+            "Code Smells": [],
+            "Educational Tips": []
+        };
+
+        let currentCategory: string | null = null;
+
+        response.split(/\n(?=#### )/).forEach(section => {
+            const titleMatch = section.match(/#### (.+)/);
+            const title = titleMatch ? titleMatch[1].trim() : null;
+
+            if (title && parsedFeedback.hasOwnProperty(title)) {
+                currentCategory = title;
+            }
+
+            if (currentCategory) {
+                let content = section.replace(/#### .*/, "").trim();
+                parsedFeedback[currentCategory] = content.split("\n").filter(item => item.trim().length > 0);
+            }
+        });
+
+        setFeedback(parsedFeedback);
     };
 
     return (
         <div style={{ padding: "10px", textAlign: "center", background: "#1e1e1e", color: "#ffffff" }}>
-            <h1 style={{ color: "#007acc" }}>AI Coding Assistant</h1>
-            <p>Click the button to get feedback on your open file.</p>
+            <Header />
 
             <button
                 onClick={sendRequest}
@@ -50,7 +94,9 @@ const VSCodeWebview: React.FC = () => {
             </div>
 
             <div id="response" className="info">
-                {response ? <pre>{response}</pre> : null}
+                {Object.keys(feedback).map(category => (
+                    <FeedbackSection key={category} title={category} content={feedback[category]} />
+                ))}
             </div>
         </div>
     );
