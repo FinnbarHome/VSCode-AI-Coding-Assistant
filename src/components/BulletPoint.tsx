@@ -25,8 +25,14 @@ const BulletPoint: React.FC<BulletPointProps> = ({ text, type = "info" }) => {
             borderRadius: "5px",
             padding: "6px 10px",
             margin: "4px 0",
-            color: "#ffffff"
+            color: "#ffffff",
+            width: "100%", 
+            maxWidth: "calc(100% - 20px)",
+            overflowWrap: "break-word", 
+            wordBreak: "break-word" 
         }}>
+        
+        
             {getIcon()}
             {text}
         </div>

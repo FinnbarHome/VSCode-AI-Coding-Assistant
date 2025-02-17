@@ -16,12 +16,14 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ title, content }) => 
             marginBottom: "12px",
             transition: "all 0.3s ease-in-out",
             boxShadow: "0px 4px 8px rgba(0, 122, 204, 0.2)",
-            width: "100%", 
-            maxWidth: "500px", 
-            minWidth: "400px", 
+            width: "450px",
+            maxWidth: "450px",
+            minWidth: "450px", 
             marginLeft: "auto",
-            marginRight: "auto"  
+            marginRight: "auto",
+            overflow: "hidden"
         }}>
+        
         
             <summary style={{
                 fontSize: "18px",
@@ -32,11 +34,18 @@ const FeedbackSection: React.FC<FeedbackSectionProps> = ({ title, content }) => 
             }}>
                 {title}
             </summary>
-            <div style={{ marginTop: "8px", paddingLeft: "10px" }}>
+            <div style={{
+                width: "100%",  // 🔥 Make sure content takes up full width of the category
+                maxWidth: "100%", 
+                overflow: "hidden", // 🔥 Prevents expanding the category width
+                textAlign: "left",
+                paddingLeft: "5px",
+            }}>
                 {content.length > 0
                     ? content.map((item, index) => <BulletPoint key={index} text={item} />)
                     : <p style={{ color: "gray", fontSize: "14px" }}>✅ No issues found.</p>}
             </div>
+
         </details>
     );
 };

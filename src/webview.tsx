@@ -74,7 +74,16 @@ const VSCodeWebview: React.FC = () => {
 
     return (
         <React.StrictMode>
-            <div style={{ padding: "10px", textAlign: "center", background: "#1e1e1e", color: "#ffffff" }}>
+            <div style={{
+                padding: "10px",
+                textAlign: "center",
+                background: "#1e1e1e",
+                color: "#ffffff",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center", // 🔥 Centers everything properly
+                width: "100%"  // 🔥 Ensures consistent sizing
+            }}>
                 <Header />
 
                 <button onClick={sendRequest} style={{
