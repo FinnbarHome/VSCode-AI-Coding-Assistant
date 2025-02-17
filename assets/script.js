@@ -65,23 +65,34 @@ function formatResponse(response) {
 
         if (currentCategory) {
             // Append content under the correct category
-            categories[currentCategory] += section.replace(/#### .*/, '').trim() + "\n";
+            let content = section.replace(/#### .*/, '').trim();
+
+            // Ensure all bullet points use `-` (force consistency)
+            content = content.replace(/\n\d+\./g, "\n-"); // Convert numbered lists (1., 2.) to `-`
+            content = content.replace(/\n\*/g, "\n-"); // Convert `*` bullets to `-`
+
+            // Format bullet points for better readability
+            content = content.replace(/-\s/g, '<li>') + '</li>';
+            content = `<ul>${content}</ul>`;
+
+            categories[currentCategory] += content;
         }
     });
 
     console.log("Parsed Sections:", categories); // Debugging
 
-    // Generate collapsible sections ONLY after AI response is fully processed
+    // Generate collapsible sections with improved styling
     return Object.keys(categories)
         .map(category => {
             const content = categories[category].trim();
-            
-            // If the AI response didn't provide content for this category, we do NOT show it initially.
+
             return content.length > 0
                 ? `
                 <details class="category">
                     <summary>${category}</summary>
-                    <div class="content">${content.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>')}</div>
+                    <div class="content">
+                        ${content}
+                    </div>
                 </details>
                 ` : "";
         })

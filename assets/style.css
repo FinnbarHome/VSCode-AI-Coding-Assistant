@@ -48,12 +48,13 @@ button:hover {
 
 /* Collapsible Sections */
 .category {
-    margin-top: 10px;
-    border: 1px solid #333;
+    margin-top: 10px; /* Reduced from 15px */
+    border: 1px solid #444;
     background: #252526;
-    padding: 10px;
-    border-radius: 5px;
+    padding: 12px; 
+    border-radius: 8px;
     transition: all 0.3s ease-in-out;
+    box-shadow: 0px 4px 8px rgba(0, 122, 204, 0.2);
 }
 
 .category:hover {
@@ -67,6 +68,8 @@ button:hover {
     font-weight: bold;
     cursor: pointer;
     color: #ffffff;
+    padding: 6px 10px; /* Reduced padding */
+    margin-bottom: 2px; /* Reduce space below title */
 }
 
 .category summary:hover {
@@ -75,9 +78,30 @@ button:hover {
 
 /* Content inside collapsible sections */
 .category .content {
-    margin-top: 10px;
-    padding: 5px;
+    margin-top: 0px; /* Removed extra spacing */
+    padding: 8px; /* Slightly reduced padding */
     color: #cccccc;
+}
+
+/* Bullet Points */
+.category ul {
+    list-style-type: none;
+    padding-left: 10px; /* Reduced padding */
+    margin-top: 2px; /* Reduce gap between title and list */
+}
+
+.category ul li {
+    background: rgba(0, 122, 204, 0.2);
+    border-radius: 5px;
+    padding: 6px 10px; /* Reduced padding */
+    margin: 3px 0; /* Reduced space between bullet points */
+    color: #ffffff;
+    display: block;
+    transition: 0.2s ease-in-out;
+}
+
+.category ul li:hover {
+    background: rgba(0, 122, 204, 0.4);
 }
 
 /* Code Blocks */
