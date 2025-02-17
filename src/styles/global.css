@@ -1,0 +1,37 @@
+/* Global Dark Theme Styling */
+body {
+    font-family: Arial, sans-serif;
+    padding: 10px;
+    text-align: center;
+    background-color: #1e1e1e;
+    color: #ffffff;
+}
+
+button {
+    background-color: #007acc;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 6px;
+    font-size: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0px 2px 5px rgba(0, 122, 204, 0.4);
+    border: none;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+button:hover {
+    background-color: #005f99;
+    transform: scale(1.05);
+}
+
+.info {
+    margin-top: 20px;
+    text-align: left;
+    white-space: pre-wrap;
+    background: #252526;
+    padding: 10px;
+    border-radius: 5px;
+    border-left: 4px solid #007acc;
+    font-size: 14px;
+}

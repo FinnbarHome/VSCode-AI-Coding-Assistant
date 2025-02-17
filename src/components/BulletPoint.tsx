@@ -1,5 +1,6 @@
 import React from "react";
 import { CheckCircle, AlertCircle } from "lucide-react";
+import "../styles/bulletpoint.css";
 
 interface BulletPointProps {
     text: string;
@@ -7,34 +8,17 @@ interface BulletPointProps {
 }
 
 const BulletPoint: React.FC<BulletPointProps> = ({ text, type = "info" }) => {
-    const iconStyles = { width: 18, height: 18, marginRight: 8 };
-
     const getIcon = () => {
         switch (type) {
-            case "error": return <AlertCircle color="#f87171" style={iconStyles} />;
-            case "warning": return <AlertCircle color="#facc15" style={iconStyles} />;
-            default: return <CheckCircle color="#10b981" style={iconStyles} />;
+            case "error": return <AlertCircle color="#f87171" />;
+            case "warning": return <AlertCircle color="#facc15" />;
+            default: return <CheckCircle color="#10b981" />;
         }
     };
 
     return (
-        <div style={{
-            display: "flex",
-            alignItems: "center",
-            backgroundColor: "rgba(0, 122, 204, 0.2)",
-            borderRadius: "5px",
-            padding: "6px 10px",
-            margin: "4px 0",
-            color: "#ffffff",
-            width: "100%", 
-            maxWidth: "calc(100% - 20px)",
-            overflowWrap: "break-word", 
-            wordBreak: "break-word" 
-        }}>
-        
-        
-            {getIcon()}
-            {text}
+        <div className="bullet-point">
+            {getIcon()} {text}
         </div>
     );
 };

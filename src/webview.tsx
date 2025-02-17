@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import Header from "./components/Header";
 import FeedbackSection from "./components/FeedbackSection";
+import "./styles/global.css"; 
 
 // Acquire VSCode API
 declare const acquireVsCodeApi: () => any;
@@ -22,6 +23,7 @@ const VSCodeWebview: React.FC = () => {
         "Educational Tips": []
     });
 
+    // Listen for messages from the VSCode extension
     React.useEffect(() => {
         const messageHandler = (event: MessageEvent) => {
             const message = event.data;
@@ -36,11 +38,13 @@ const VSCodeWebview: React.FC = () => {
         return () => window.removeEventListener("message", messageHandler);
     }, []);
 
+    // Request AI analysis from VSCode extension
     const sendRequest = () => {
         console.log("Sending request to VSCode extension");
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
+    // Parse AI response and update state
     const processAIResponse = (response: string) => {
         console.log("Processing AI response:", response);
         if (!response) return;
@@ -78,35 +82,18 @@ const VSCodeWebview: React.FC = () => {
     };
 
     return (
-        <div style={{
-            padding: "10px",
-            textAlign: "center",
-            background: "#1e1e1e",
-            color: "#ffffff",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center", 
-            width: "100%"  
-        }}>
+        <div className="webview-container">
             <Header />
 
-            <button onClick={sendRequest} style={{
-                backgroundColor: "#007acc",
-                color: "white",
-                padding: "12px 18px",
-                borderRadius: "6px",
-                fontSize: "16px",
-                marginBottom: "25px",
-                boxShadow: "0px 2px 5px rgba(0, 122, 204, 0.4)"
-            }}>
+            <button onClick={sendRequest} className="get-feedback-btn">
                 Get Feedback
             </button>
 
-            <div className="info" style={{ marginBottom: "20px", fontSize: "14px", color: "#bbbbbb" }}>
+            <div className="info">
                 <strong>Currently Targeting:</strong> <span>{filename}</span>
             </div>
 
-            <div id="response" className="info">
+            <div id="response">
                 {Object.keys(feedback).map(category => (
                     <FeedbackSection key={category} title={category} content={feedback[category]} />
                 ))}
@@ -115,6 +102,7 @@ const VSCodeWebview: React.FC = () => {
     );
 };
 
+// Mount the React app to the DOM
 const rootElement = document.getElementById("root");
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);

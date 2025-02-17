@@ -18,14 +18,18 @@ module.exports = [
                     test: /\.(ts|tsx)$/,
                     exclude: /node_modules/,
                     use: 'ts-loader'
+                },
+                {
+                    test: /\.css$/, // <-- CSS Loader Added
+                    use: ['style-loader', 'css-loader'],
                 }
             ]
         },
         resolve: {
-            extensions: ['.ts', '.tsx', '.js']
+            extensions: ['.ts', '.tsx', '.js', '.css']
         },
-        target: 'web',  
-        devtool: false   
+        target: 'web',
+        devtool: false
     },
 
     // Extension Configuration (VSCode backend)
@@ -37,7 +41,7 @@ module.exports = [
         output: {
             path: path.resolve(__dirname, 'out'),
             filename: '[name].js',
-            libraryTarget: 'commonjs2' 
+            libraryTarget: 'commonjs2'
         },
         module: {
             rules: [
@@ -51,9 +55,9 @@ module.exports = [
         resolve: {
             extensions: ['.ts', '.tsx', '.js']
         },
-        target: 'node',  
+        target: 'node',
         externals: {
-            vscode: 'commonjs vscode',  
+            vscode: 'commonjs vscode',
             path: 'commonjs path',
             fs: 'commonjs fs',
             os: 'commonjs os',
