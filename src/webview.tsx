@@ -25,6 +25,7 @@ const VSCodeWebview: React.FC = () => {
     React.useEffect(() => {
         const messageHandler = (event: MessageEvent) => {
             const message = event.data;
+            console.log("Received message from extension:", message);
             if (message.command === "displayFileInfo") {
                 setFilename(message.filename);
                 processAIResponse(message.response);
@@ -36,10 +37,14 @@ const VSCodeWebview: React.FC = () => {
     }, []);
 
     const sendRequest = () => {
+        console.log("Sending request to VSCode extension");
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
     const processAIResponse = (response: string) => {
+        console.log("Processing AI response:", response);
+        if (!response) return;
+
         const parsedFeedback: Record<string, string[]> = {
             "Serious Problems": [],
             "Warnings": [],
@@ -73,46 +78,40 @@ const VSCodeWebview: React.FC = () => {
     };
 
     return (
-        <React.StrictMode>
-            <div style={{
-                padding: "10px",
-                textAlign: "center",
-                background: "#1e1e1e",
-                color: "#ffffff",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center", // 🔥 Centers everything properly
-                width: "100%"  // 🔥 Ensures consistent sizing
+        <div style={{
+            padding: "10px",
+            textAlign: "center",
+            background: "#1e1e1e",
+            color: "#ffffff",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center", 
+            width: "100%"  
+        }}>
+            <Header />
+
+            <button onClick={sendRequest} style={{
+                backgroundColor: "#007acc",
+                color: "white",
+                padding: "12px 18px",
+                borderRadius: "6px",
+                fontSize: "16px",
+                marginBottom: "25px",
+                boxShadow: "0px 2px 5px rgba(0, 122, 204, 0.4)"
             }}>
-                <Header />
+                Get Feedback
+            </button>
 
-                <button onClick={sendRequest} style={{
-                    backgroundColor: "#007acc",
-                    color: "white",
-                    padding: "12px 18px",
-                    borderRadius: "6px",
-                    fontSize: "16px",
-                    marginBottom: "25px", 
-                    boxShadow: "0px 2px 5px rgba(0, 122, 204, 0.4)" 
-                }}>
-                    Get Feedback
-                </button>
-
-                <div className="info" style={{
-                    marginBottom: "20px", 
-                    fontSize: "14px",
-                    color: "#bbbbbb"
-                }}>
-                    <strong>Currently Targeting:</strong> <span>{filename}</span>
-                </div>
-
-                <div id="response" className="info">
-                    {Object.keys(feedback).map(category => (
-                        <FeedbackSection key={category} title={category} content={feedback[category]} />
-                    ))}
-                </div>
+            <div className="info" style={{ marginBottom: "20px", fontSize: "14px", color: "#bbbbbb" }}>
+                <strong>Currently Targeting:</strong> <span>{filename}</span>
             </div>
-        </React.StrictMode>
+
+            <div id="response" className="info">
+                {Object.keys(feedback).map(category => (
+                    <FeedbackSection key={category} title={category} content={feedback[category]} />
+                ))}
+            </div>
+        </div>
     );
 };
 
@@ -120,4 +119,6 @@ const rootElement = document.getElementById("root");
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);
     root.render(<VSCodeWebview />);
+} else {
+    console.error("❌ React root element not found!");
 }

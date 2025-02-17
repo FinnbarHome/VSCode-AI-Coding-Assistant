@@ -46,7 +46,8 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             vscode.Uri.joinPath(this.context.extensionUri, "out", "webview.js")
         );
         
-        webviewView.webview.html = this.getHtmlContent(scriptUri);
+        webviewView.webview.html = this.getHtmlContent(webviewView.webview);
+
         
     
         // Handle messages from the webview
@@ -121,7 +122,11 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
     
     // Generate React-based WebView HTML
-    private getHtmlContent(scriptUri: vscode.Uri): string {
+    private getHtmlContent(webview: vscode.Webview): string {
+        const scriptUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.context.extensionUri, "out", "webview.js")
+        );
+    
         return `
             <!DOCTYPE html>
             <html lang="en">
@@ -129,21 +134,20 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>AI Coding Assistant</title>
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline';">
                 <style>
                     body { margin: 0; padding: 0; background: #1e1e1e; color: white; font-family: Arial, sans-serif; }
-                    #root { display: flex; justify-content: center; align-items: center; height: 100vh; }
+                    #root { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; }
                 </style>
             </head>
             <body>
                 <div id="root"></div>
-                <script src="${scriptUri}"></script>
+                <script src="${scriptUri}" defer></script>
             </body>
             </html>
         `;
     }
-
     
-
     
     
 }
