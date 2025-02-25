@@ -3,6 +3,8 @@ import { getAIResponse } from './ai';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const MAX_RETRIES = 3; // Avoid infinite loops
+
 // Function called when the extension is activated
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Coding Assistant is now active!');
@@ -35,57 +37,74 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.onDidReceiveMessage(async (message) => {
             if (message.command === 'getAIAnalysis') {
-                const activeEditor = vscode.window.activeTextEditor;
-                if (!activeEditor) {
-                    vscode.window.showErrorMessage('No active editor found.');
-                    this.postMessage('No file selected', 'Please open a file to analyze.');
-                    return;
-                }
-
-                const fileName = activeEditor.document.fileName;
-                const extension = this.getFileExtension(fileName);
-
-                if (!this.supportedExtensions.includes(extension)) {
-                    vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
-                    this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
-                    return;
-                }
-
-                const fileContent = activeEditor.document.getText();
-                const truncatedContent = fileContent.length > 2048
-                    ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
-                    : fileContent;
-
-                const prompt = `Review the following code:\n\n${truncatedContent}`;
-
-                // Get the file path where the response is saved
-                const responseFilePath = await getAIResponse(prompt);
-                if (!responseFilePath) {
-                    vscode.window.showErrorMessage("Error retrieving AI response.");
-                    return;
-                }
-
-                // Convert raw response to JSON and save it
-                const jsonFilePath = this.saveParsedResponse(responseFilePath);
-                if (!jsonFilePath) {
-                    vscode.window.showErrorMessage("Error processing AI response.");
-                    return;
-                }
-
-                // Read and send JSON data
-                let responseJson = "";
-                try {
-                    responseJson = fs.readFileSync(jsonFilePath, 'utf-8');
-                } catch (error) {
-                    vscode.window.showErrorMessage("Error reading JSON response file.");
-                    console.error("Error reading JSON file:", error);
-                    return;
-                }
-
-                // Post AI response to webview
-                this.postMessage(this.getShortFileName(fileName), responseJson);
+                await this.handleAIAnalysis();
             }
         });
+    }
+
+    async handleAIAnalysis(retryCount = 0) {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            vscode.window.showErrorMessage('No active editor found.');
+            this.postMessage('No file selected', 'Please open a file to analyze.');
+            return;
+        }
+
+        const fileName = activeEditor.document.fileName;
+        const extension = this.getFileExtension(fileName);
+
+        if (!this.supportedExtensions.includes(extension)) {
+            vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
+            this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
+            return;
+        }
+
+        const fileContent = activeEditor.document.getText();
+        const truncatedContent = fileContent.length > 2048
+            ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
+            : fileContent;
+
+        const prompt = `Review the following code:\n\n${truncatedContent}`;
+
+        // Get the file path where the response is saved
+        const responseFilePath = await getAIResponse(prompt);
+        if (!responseFilePath) {
+            vscode.window.showErrorMessage("Error retrieving AI response.");
+            return;
+        }
+
+        // Convert raw response to JSON and save it
+        const jsonFilePath = this.saveParsedResponse(responseFilePath);
+        if (!jsonFilePath) {
+            vscode.window.showErrorMessage("Error processing AI response.");
+            return;
+        }
+
+        // Read and check JSON data
+        let responseJson = "";
+        try {
+            responseJson = fs.readFileSync(jsonFilePath, 'utf-8');
+            const parsedJson = JSON.parse(responseJson);
+
+            // If JSON is blank, retry querying the AI
+            if (this.isBlankResponse(parsedJson)) {
+                if (retryCount < MAX_RETRIES) {
+                    console.warn(`⚠️ Blank AI response detected. Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                    await this.handleAIAnalysis(retryCount + 1);
+                    return;
+                } else {
+                    vscode.window.showErrorMessage("AI returned an empty response multiple times. Please try again later.");
+                }
+            }
+
+        } catch (error) {
+            vscode.window.showErrorMessage("Error reading JSON response file.");
+            console.error("Error reading JSON file:", error);
+            return;
+        }
+
+        // Post AI response to webview
+        this.postMessage(this.getShortFileName(fileName), responseJson);
     }
 
     getView() {
@@ -112,7 +131,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     /**
-     * Parses and saves AI response as JSON
+     * Saves parsed AI response as JSON
      */
     private saveParsedResponse(responseFilePath: string): string | null {
         const jsonResponsesDir = path.resolve(__dirname, '../jsonresponses');
@@ -143,44 +162,42 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private parseAIResponse(response: string): Record<string, string[]> {
         const parsedData: Record<string, string[]> = {};
         let currentCategory: string | null = null;
-    
-        // Split the response by new lines
+
         const lines = response.split('\n');
-    
+
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-    
+
             // Detect new category (#### Category Name)
             if (line.startsWith('#### ')) {
                 currentCategory = line.replace('#### ', '').trim();
-                parsedData[currentCategory] = [];  // Initialize category as an empty array
+                parsedData[currentCategory] = [];
                 continue;
             }
-    
+
             // Identify bullet points starting with "-"
             if (line.startsWith('-') && currentCategory) {
                 let bulletPoint = line.substring(1).trim(); // Remove "-"
-    
-                // Continue collecting sentences until the next bullet or category
+
+                // Continue collecting full sentences until the next bullet or category
                 while (i + 1 < lines.length && !lines[i + 1].startsWith('-') && !lines[i + 1].startsWith('#### ')) {
                     i++;
                     bulletPoint += " " + lines[i].trim();
                 }
-    
-                // Ensure we capture complete sentences
-                if (!bulletPoint.endsWith('.') && bulletPoint.includes('.')) {
-                    const lastPeriodIndex = bulletPoint.lastIndexOf('.');
-                    bulletPoint = bulletPoint.substring(0, lastPeriodIndex + 1);
-                }
-    
-                // Push the cleaned bullet point to the correct category
+
                 parsedData[currentCategory].push(bulletPoint);
             }
         }
-    
+
         return parsedData;
     }
-    
+
+    /**
+     * Checks if JSON response is completely empty
+     */
+    private isBlankResponse(parsedJson: Record<string, string[]>): boolean {
+        return Object.values(parsedJson).every(arr => arr.length === 0);
+    }
 
     private getHtmlContent(webview: vscode.Webview): string {
         const scriptUri = webview.asWebviewUri(
