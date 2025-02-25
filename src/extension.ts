@@ -60,25 +60,30 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
 
                 // Get the file path where the response is saved
                 const responseFilePath = await getAIResponse(prompt);
-
                 if (!responseFilePath) {
                     vscode.window.showErrorMessage("Error retrieving AI response.");
                     return;
                 }
 
-                // Read and parse AI response from file
-                let parsedResponse = "";
-                try {
-                    const rawResponse = fs.readFileSync(responseFilePath, 'utf-8');
-                    parsedResponse = this.parseAIResponse(rawResponse);
-                } catch (error) {
-                    vscode.window.showErrorMessage("Error reading AI response file.");
-                    console.error("Error reading response file:", error);
+                // Convert raw response to JSON and save it
+                const jsonFilePath = this.saveParsedResponse(responseFilePath);
+                if (!jsonFilePath) {
+                    vscode.window.showErrorMessage("Error processing AI response.");
                     return;
                 }
 
-                // Post parsed AI response to webview
-                this.postMessage(this.getShortFileName(fileName), parsedResponse);
+                // Read and send JSON data
+                let responseJson = "";
+                try {
+                    responseJson = fs.readFileSync(jsonFilePath, 'utf-8');
+                } catch (error) {
+                    vscode.window.showErrorMessage("Error reading JSON response file.");
+                    console.error("Error reading JSON file:", error);
+                    return;
+                }
+
+                // Post AI response to webview
+                this.postMessage(this.getShortFileName(fileName), responseJson);
             }
         });
     }
@@ -107,46 +112,75 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     /**
-     * Parses the AI response text file into structured data
+     * Parses and saves AI response as JSON
      */
-    private parseAIResponse(response: string): string {
+    private saveParsedResponse(responseFilePath: string): string | null {
+        const jsonResponsesDir = path.resolve(__dirname, '../jsonresponses');
+        if (!fs.existsSync(jsonResponsesDir)) {
+            fs.mkdirSync(jsonResponsesDir, { recursive: true });
+        }
+
+        try {
+            const rawResponse = fs.readFileSync(responseFilePath, 'utf-8');
+            const parsedData = this.parseAIResponse(rawResponse);
+
+            // Generate JSON filename
+            const jsonFileName = `response-${new Date().toISOString().replace(/:/g, '-')}.json`;
+            const jsonFilePath = path.join(jsonResponsesDir, jsonFileName);
+
+            fs.writeFileSync(jsonFilePath, JSON.stringify(parsedData, null, 2), 'utf-8');
+            console.log(`✅ Parsed AI response saved to: ${jsonFilePath}`);
+            return jsonFilePath;
+        } catch (error) {
+            console.error("Error parsing and saving AI response:", error);
+            return null;
+        }
+    }
+
+    /**
+     * Parses the AI response text into structured JSON
+     */
+    private parseAIResponse(response: string): Record<string, string[]> {
         const parsedData: Record<string, string[]> = {};
         let currentCategory: string | null = null;
-
+    
+        // Split the response by new lines
         const lines = response.split('\n');
-
+    
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-
-            // Detect new category
+    
+            // Detect new category (#### Category Name)
             if (line.startsWith('#### ')) {
                 currentCategory = line.replace('#### ', '').trim();
-                parsedData[currentCategory] = [];
+                parsedData[currentCategory] = [];  // Initialize category as an empty array
                 continue;
             }
-
+    
             // Identify bullet points starting with "-"
             if (line.startsWith('-') && currentCategory) {
                 let bulletPoint = line.substring(1).trim(); // Remove "-"
-
-                // Continue collecting full sentences until the next bullet or category
+    
+                // Continue collecting sentences until the next bullet or category
                 while (i + 1 < lines.length && !lines[i + 1].startsWith('-') && !lines[i + 1].startsWith('#### ')) {
                     i++;
                     bulletPoint += " " + lines[i].trim();
                 }
-
+    
                 // Ensure we capture complete sentences
                 if (!bulletPoint.endsWith('.') && bulletPoint.includes('.')) {
                     const lastPeriodIndex = bulletPoint.lastIndexOf('.');
                     bulletPoint = bulletPoint.substring(0, lastPeriodIndex + 1);
                 }
-
+    
+                // Push the cleaned bullet point to the correct category
                 parsedData[currentCategory].push(bulletPoint);
             }
         }
-
-        return JSON.stringify(parsedData, null, 2);
+    
+        return parsedData;
     }
+    
 
     private getHtmlContent(webview: vscode.Webview): string {
         const scriptUri = webview.asWebviewUri(
