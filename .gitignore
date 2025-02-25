@@ -32,3 +32,5 @@ Thumbs.db
 # Other temporary files
 *.tmp
 *.temp
+combiner.py
+collected_files.txt

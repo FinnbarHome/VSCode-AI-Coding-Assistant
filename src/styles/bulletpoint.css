@@ -1,0 +1,30 @@
+/* Bullet Points */
+.bullet-point {
+    display: flex;
+    align-items: center;
+    background-color: rgba(0, 122, 204, 0.2);
+    border-radius: 5px;
+    padding: 6px 10px;
+    margin: 4px 0;
+    color: #ffffff;
+    width: 100%;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+.bullet-point:hover {
+    background: rgba(0, 122, 204, 0.4);
+}
+
+.bullet-point svg {
+    flex-shrink: 0;
+}
+
+.bullet-point span {
+    flex-grow: 1;
+    white-space: pre-wrap;
+}

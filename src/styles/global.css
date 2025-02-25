@@ -1,0 +1,85 @@
+/* Global Dark Theme Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #1e1e1e;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+/* Main container ensuring responsiveness */
+.webview-container {
+    width: 100%;
+    max-width: 90%;
+    min-width: 300px;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px; 
+}
+
+/* Ensures all components scale consistently */
+.responsive-container {
+    width: 100%;
+    max-width: 800px; 
+    min-width: 300px;
+    padding: 0 10px; 
+    box-sizing: border-box;
+}
+
+/* Buttons */
+button {
+    background-color: #007acc;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 16px;
+    box-shadow: none; 
+    border: none;
+    cursor: pointer;
+    width: 200px; 
+    height: 40px; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+button:hover {
+    background-color: #005f99;
+    transform: scale(1.05);
+}
+
+/* Info Box */
+.info {
+    background: #252526;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid #007acc;
+    font-size: 14px;
+    text-align: left;
+}
+
+/* Root container ensures all elements do not exceed screen width */
+#root {
+    width: 100%;
+    max-width: 90%;
+    min-width: 300px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* Ensure category boxes do not shift when expanded */
+#response {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
