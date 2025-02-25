@@ -66,18 +66,19 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                     return;
                 }
 
-                // Read AI response from file
-                let responseText = "";
+                // Read and parse AI response from file
+                let parsedResponse = "";
                 try {
-                    responseText = fs.readFileSync(responseFilePath, 'utf-8');
+                    const rawResponse = fs.readFileSync(responseFilePath, 'utf-8');
+                    parsedResponse = this.parseAIResponse(rawResponse);
                 } catch (error) {
                     vscode.window.showErrorMessage("Error reading AI response file.");
                     console.error("Error reading response file:", error);
                     return;
                 }
 
-                // Post AI response to webview
-                this.postMessage(this.getShortFileName(fileName), responseText);
+                // Post parsed AI response to webview
+                this.postMessage(this.getShortFileName(fileName), parsedResponse);
             }
         });
     }
@@ -103,6 +104,48 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
 
     private getFileExtension(filePath: string): string {
         return filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
+    }
+
+    /**
+     * Parses the AI response text file into structured data
+     */
+    private parseAIResponse(response: string): string {
+        const parsedData: Record<string, string[]> = {};
+        let currentCategory: string | null = null;
+
+        const lines = response.split('\n');
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+
+            // Detect new category
+            if (line.startsWith('#### ')) {
+                currentCategory = line.replace('#### ', '').trim();
+                parsedData[currentCategory] = [];
+                continue;
+            }
+
+            // Identify bullet points starting with "-"
+            if (line.startsWith('-') && currentCategory) {
+                let bulletPoint = line.substring(1).trim(); // Remove "-"
+
+                // Continue collecting full sentences until the next bullet or category
+                while (i + 1 < lines.length && !lines[i + 1].startsWith('-') && !lines[i + 1].startsWith('#### ')) {
+                    i++;
+                    bulletPoint += " " + lines[i].trim();
+                }
+
+                // Ensure we capture complete sentences
+                if (!bulletPoint.endsWith('.') && bulletPoint.includes('.')) {
+                    const lastPeriodIndex = bulletPoint.lastIndexOf('.');
+                    bulletPoint = bulletPoint.substring(0, lastPeriodIndex + 1);
+                }
+
+                parsedData[currentCategory].push(bulletPoint);
+            }
+        }
+
+        return JSON.stringify(parsedData, null, 2);
     }
 
     private getHtmlContent(webview: vscode.Webview): string {

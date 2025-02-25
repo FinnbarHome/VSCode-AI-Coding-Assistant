@@ -49,36 +49,32 @@ const VSCodeWebview: React.FC = () => {
         console.log("Processing AI response:", response);
         if (!response) return;
 
-        const parsedFeedback: Record<string, string[]> = {
-            "Serious Problems": [],
-            "Warnings": [],
-            "Refactoring Suggestions": [],
-            "Coding Conventions": [],
-            "Performance Optimization": [],
-            "Security Issues": [],
-            "Best Practices": [],
-            "Readability and Maintainability": [],
-            "Code Smells": [],
-            "Educational Tips": []
-        };
+        try {
+            // Parse response as JSON
+            const parsedData = JSON.parse(response);
 
-        let currentCategory: string | null = null;
+            // Ensure we maintain the expected format
+            const updatedFeedback: Record<string, string[]> = {
+                "Serious Problems": parsedData["Serious Problems"] || [],
+                "Warnings": parsedData["Warnings"] || [],
+                "Refactoring Suggestions": parsedData["Refactoring Suggestions"] || [],
+                "Coding Conventions": parsedData["Coding Conventions"] || [],
+                "Performance Optimization": parsedData["Performance Optimization"] || [],
+                "Security Issues": parsedData["Security Issues"] || [],
+                "Best Practices": parsedData["Best Practices"] || [],
+                "Readability and Maintainability": parsedData["Readability and Maintainability"] || [],
+                "Code Smells": parsedData["Code Smells"] || [],
+                "Educational Tips": parsedData["Educational Tips"] || []
+            };
 
-        response.split(/\n(?=#### )/).forEach(section => {
-            const titleMatch = section.match(/#### (.+)/);
-            const title = titleMatch ? titleMatch[1].trim() : null;
-
-            if (title && parsedFeedback.hasOwnProperty(title)) {
-                currentCategory = title;
-            }
-
-            if (currentCategory) {
-                let content = section.replace(/#### .*/, "").trim();
-                parsedFeedback[currentCategory] = content.split("\n").filter(item => item.trim().length > 0);
-            }
-        });
-
-        setFeedback(parsedFeedback);
+            setFeedback(updatedFeedback);
+        } catch (error) {
+            console.error("Error parsing AI response:", error);
+            vscode.postMessage({
+                command: "error",
+                message: "Failed to parse AI response. Please check the response format."
+            });
+        }
     };
 
     return (
