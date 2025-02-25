@@ -162,35 +162,47 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private parseAIResponse(response: string): Record<string, string[]> {
         const parsedData: Record<string, string[]> = {};
         let currentCategory: string | null = null;
-
+    
         const lines = response.split('\n');
-
+    
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-
+    
             // Detect new category (#### Category Name)
             if (line.startsWith('#### ')) {
                 currentCategory = line.replace('#### ', '').trim();
-                parsedData[currentCategory] = [];
+                parsedData[currentCategory] = [];  // Initialize category as an empty array
                 continue;
             }
-
-            // Identify bullet points starting with "-"
-            if (line.startsWith('-') && currentCategory) {
-                let bulletPoint = line.substring(1).trim(); // Remove "-"
-
-                // Continue collecting full sentences until the next bullet or category
-                while (i + 1 < lines.length && !lines[i + 1].startsWith('-') && !lines[i + 1].startsWith('#### ')) {
+    
+            // Identify bullet points ("- ") OR numbered lists ("1. ")
+            if ((line.match(/^\d+\./) || line.startsWith('-')) && currentCategory) {
+                let bulletPoint = line.replace(/^\d+\.\s*/, '').replace(/^- /, '').trim(); // Remove number or dash
+    
+                // Continue collecting full sentences until the next bullet, numbered list, or category
+                while (
+                    i + 1 < lines.length &&
+                    !lines[i + 1].match(/^\d+\./) &&
+                    !lines[i + 1].startsWith('-') &&
+                    !lines[i + 1].startsWith('#### ')
+                ) {
                     i++;
                     bulletPoint += " " + lines[i].trim();
                 }
-
+    
+                // Ensure we capture complete sentences
+                if (!bulletPoint.endsWith('.') && bulletPoint.includes('.')) {
+                    const lastPeriodIndex = bulletPoint.lastIndexOf('.');
+                    bulletPoint = bulletPoint.substring(0, lastPeriodIndex + 1);
+                }
+    
                 parsedData[currentCategory].push(bulletPoint);
             }
         }
-
+    
         return parsedData;
     }
+    
 
     /**
      * Checks if JSON response is completely empty
