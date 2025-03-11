@@ -1,7 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import Header from "./components/Header";
-import FeedbackSection from "./components/FeedbackSection";
 import FeedbackDetail from "./components/FeedbackDetail";
 import "./styles/global.css"; 
 
@@ -17,18 +16,6 @@ const VSCodeWebview: React.FC = () => {
         type?: 'error' | 'warning' | 'info';
     } | null>(null);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
-    const [feedback, setFeedback] = React.useState<Record<string, string[]>>({
-        "Serious Problems": [],
-        "Warnings": [],
-        "Refactoring Suggestions": [],
-        "Coding Conventions": [],
-        "Performance Optimization": [],
-        "Security Issues": [],
-        "Best Practices": [],
-        "Readability and Maintainability": [],
-        "Code Smells": [],
-        "Educational Tips": []
-    });
 
     // Listen for messages from the VSCode extension
     React.useEffect(() => {
@@ -38,7 +25,6 @@ const VSCodeWebview: React.FC = () => {
             
             if (message.command === "displayFileInfo") {
                 setFilename(message.filename);
-                processAIResponse(message.response);
                 setIsLoading(false);
             } else if (message.command === "showItemDetails") {
                 setSelectedItem({
@@ -60,50 +46,11 @@ const VSCodeWebview: React.FC = () => {
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
-    // Parse AI response and update state
-    const processAIResponse = (response: string) => {
-        console.log("Processing AI response:", response);
-        if (!response) {
-            setIsLoading(false);
-            return;
-        }
-
-        try {
-            // Parse response as JSON
-            const parsedData = JSON.parse(response);
-
-            // Ensure we maintain the expected format
-            const updatedFeedback: Record<string, string[]> = {
-                "Serious Problems": parsedData["Serious Problems"] || [],
-                "Warnings": parsedData["Warnings"] || [],
-                "Refactoring Suggestions": parsedData["Refactoring Suggestions"] || [],
-                "Coding Conventions": parsedData["Coding Conventions"] || [],
-                "Performance Optimization": parsedData["Performance Optimization"] || [],
-                "Security Issues": parsedData["Security Issues"] || [],
-                "Best Practices": parsedData["Best Practices"] || [],
-                "Readability and Maintainability": parsedData["Readability and Maintainability"] || [],
-                "Code Smells": parsedData["Code Smells"] || [],
-                "Educational Tips": parsedData["Educational Tips"] || []
-            };
-
-            setFeedback(updatedFeedback);
-        } catch (error) {
-            console.error("Error parsing AI response:", error);
-            vscode.postMessage({
-                command: "error",
-                message: "Failed to parse AI response. Please check the response format."
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     return (
-        <div className="webview-container">
-            <Header />
-
-            <div className="info">
-                <strong>Currently Analyzing:</strong> <span>{filename}</span>
+        <div className="vscode-webview">
+            <div className="vscode-info-bar">
+                <span className="info-label">File:</span>
+                <span className="info-value">{filename}</span>
             </div>
 
             {isLoading ? (
@@ -120,7 +67,7 @@ const VSCodeWebview: React.FC = () => {
             ) : (
                 <div className="empty-state">
                     <p>Select an item from the Feedback panel to view details</p>
-                    <button onClick={sendRequest} className="get-feedback-btn">
+                    <button className="vscode-button" onClick={sendRequest}>
                         Analyze Current File
                     </button>
                 </div>

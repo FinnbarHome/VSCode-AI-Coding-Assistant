@@ -413,46 +413,86 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
      * Parses the AI response text into structured JSON
      */
     private parseAIResponse(response: string): Record<string, string[]> {
-        const parsedData: Record<string, string[]> = {};
-        let currentCategory: string | null = null;
+        const parsedData: Record<string, string[]> = {
+            "Serious Problems": [],
+            "Warnings": [],
+            "Refactoring Suggestions": [],
+            "Coding Conventions": [],
+            "Performance Optimization": [],
+            "Security Issues": [],
+            "Best Practices": [],
+            "Readability and Maintainability": [],
+            "Code Smells": [],
+            "Educational Tips": []
+        };
+        
+        let currentCategory: string = "Serious Problems"; // Default category
     
+        // Split response by lines and process
         const lines = response.split('\n');
-    
+        
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-    
-            // Detect new category (#### Category Name)
-            if (line.startsWith('#### ')) {
-                currentCategory = line.replace('#### ', '').trim();
-                parsedData[currentCategory] = [];  // Initialize category as an empty array
-                continue;
+            
+            // Skip empty lines
+            if (!line) continue;
+            
+            // Check for category headers (#### Category Name)
+            const categoryMatch = line.match(/^#{1,4}\s+(.+)$/);
+            if (categoryMatch) {
+                const categoryName = categoryMatch[1].trim();
+                
+                // Check if this is one of our known categories
+                if (parsedData.hasOwnProperty(categoryName)) {
+                    currentCategory = categoryName;
+                    continue;
+                }
             }
-    
-            // Identify bullet points ("- ") OR numbered lists ("1. ")
-            if ((line.match(/^\d+\./) || line.startsWith('-')) && currentCategory) {
-                let bulletPoint = line.replace(/^\d+\.\s*/, '').replace(/^- /, '').trim(); // Remove number or dash
-    
-                // Continue collecting full sentences until the next bullet, numbered list, or category
-                while (
-                    i + 1 < lines.length &&
-                    !lines[i + 1].match(/^\d+\./) &&
-                    !lines[i + 1].startsWith('-') &&
-                    !lines[i + 1].startsWith('#### ')
-                ) {
+            
+            // Process bullet points and content
+            if (line.startsWith('-') || line.match(/^\d+\./)) {
+                // This is a bullet point
+                let bulletPoint = line.replace(/^-\s*/, '').replace(/^\d+\.\s*/, '').trim();
+                
+                // Continue collecting content for this bullet point
+                while (i + 1 < lines.length) {
+                    const nextLine = lines[i + 1].trim();
+                    
+                    // Stop if we hit a new bullet point or category
+                    if (nextLine.startsWith('-') || 
+                        nextLine.match(/^\d+\./) || 
+                        nextLine.match(/^#{1,4}\s+/) ||
+                        !nextLine) {
+                        break;
+                    }
+                    
+                    // Add the next line to the current bullet point
+                    bulletPoint += ' ' + nextLine;
                     i++;
-                    bulletPoint += " " + lines[i].trim();
                 }
-    
-                // Ensure we capture complete sentences
-                if (!bulletPoint.endsWith('.') && bulletPoint.includes('.')) {
-                    const lastPeriodIndex = bulletPoint.lastIndexOf('.');
-                    bulletPoint = bulletPoint.substring(0, lastPeriodIndex + 1);
-                }
-    
+                
+                // Add the bullet point to the current category
                 parsedData[currentCategory].push(bulletPoint);
             }
+            // Handle "No issues found" or similar messages
+            else if (!line.match(/^#{1,4}\s+/) && !line.startsWith('-') && !line.match(/^\d+\./)) {
+                // This is a plain text line, not a bullet point or category header
+                // Check if it contains "No issues found" or similar
+                if (line.toLowerCase().includes('no issues') || 
+                    line.toLowerCase().includes('no problems') ||
+                    line.toLowerCase().includes('✅')) {
+                    // Don't add these as they're handled by the UI
+                    continue;
+                }
+                
+                // Otherwise, add as a bullet point
+                parsedData[currentCategory].push(line);
+            }
         }
-    
+        
+        // Log the parsed data for debugging
+        console.log('Parsed AI response:', parsedData);
+        
         return parsedData;
     }
     

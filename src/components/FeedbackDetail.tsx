@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle, AlertCircle, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info } from "lucide-react";
 import "../styles/feedbackDetail.css";
 
 interface FeedbackDetailProps {
@@ -11,54 +11,83 @@ interface FeedbackDetailProps {
 const FeedbackDetail: React.FC<FeedbackDetailProps> = ({ category, content, type }) => {
     const getIcon = () => {
         switch (type) {
-            case "error": return <AlertCircle color="#f87171" size={24} />;
-            case "warning": return <AlertCircle color="#facc15" size={24} />;
-            default: return <Info color="#10b981" size={24} />;
-        }
-    };
-
-    const getTypeLabel = () => {
-        switch (type) {
-            case "error": return "Error";
-            case "warning": return "Warning";
-            default: return "Info";
+            case "error": return <AlertCircle color="#f87171" size={20} />;
+            case "warning": return <AlertTriangle color="#facc15" size={20} />;
+            default: return <Info color="#10b981" size={20} />;
         }
     };
 
     // Format content as bullet points if it contains multiple items
     const formatContent = () => {
-        // Check if content contains multiple sentences that could be bullet points
-        if (content.includes('. ') || content.includes('.\n')) {
-            // Split by period followed by space or newline, but keep the period
-            const sentences = content.split(/\.(?=\s|$)/).filter(s => s.trim().length > 0);
-            
-            if (sentences.length > 1) {
-                return (
-                    <ul className="feedback-detail-list">
-                        {sentences.map((sentence, index) => (
-                            <li key={index}>{sentence.trim()}{!sentence.endsWith('.') ? '.' : ''}</li>
-                        ))}
-                    </ul>
-                );
-            }
+        // Check if content is empty or "No issues found"
+        if (!content || content.toLowerCase().includes('no issues found')) {
+            return (
+                <div className="feedback-empty">
+                    <span className="feedback-checkmark">✓</span>
+                    <span>No issues found in this category</span>
+                </div>
+            );
+        }
+
+        // Split content into bullet points
+        const bulletPoints = splitIntoBulletPoints(content);
+        
+        if (bulletPoints.length > 1) {
+            return (
+                <ul className="vscode-list">
+                    {bulletPoints.map((point, index) => (
+                        <li key={index} className="vscode-list-item">
+                            <div className="list-item-content">
+                                <span className="list-item-icon">{getItemIcon(type)}</span>
+                                <span>{point}</span>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            );
         }
         
-        // If not multiple sentences, just return as is
-        return <p>{content}</p>;
+        // If only one item, display without list
+        return (
+            <div className="single-item">
+                <span className="list-item-icon">{getItemIcon(type)}</span>
+                <span>{content}</span>
+            </div>
+        );
+    };
+    
+    // Helper function to split content into bullet points
+    const splitIntoBulletPoints = (text: string): string[] => {
+        // If the text already contains bullet points (- or numbers)
+        if (text.match(/^[-•*]\s+/m) || text.match(/^\d+\.\s+/m)) {
+            return text.split(/\n+/).filter(line => line.trim().length > 0);
+        }
+        
+        // Otherwise split by periods, but be careful with abbreviations and numbers
+        const points = text.split(/\.(?=\s|$)/).filter(s => s.trim().length > 0);
+        return points.map(p => p.trim() + (p.endsWith('.') ? '' : '.'));
+    };
+    
+    // Get appropriate icon for list items
+    const getItemIcon = (itemType: string) => {
+        switch (itemType) {
+            case 'error': return '⚠️';
+            case 'warning': return '⚠';
+            default: return '📌';
+        }
     };
 
     return (
-        <div className="feedback-detail">
-            <div className="feedback-detail-header">
-                <div className="feedback-detail-icon">
+        <div className="vscode-panel">
+            <div className="vscode-panel-header">
+                <div className="panel-header-icon">
                     {getIcon()}
                 </div>
-                <div className="feedback-detail-title">
-                    <h2>{category}</h2>
-                    <span className={`feedback-detail-type ${type}`}>{getTypeLabel()}</span>
+                <div className="panel-header-title">
+                    {category}
                 </div>
             </div>
-            <div className="feedback-detail-content">
+            <div className="vscode-panel-content">
                 {formatContent()}
             </div>
         </div>
