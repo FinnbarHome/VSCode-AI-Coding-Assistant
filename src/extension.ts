@@ -217,6 +217,10 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
     getFeedbackItems(category: string): string[] | undefined {
         return this.feedbackData[category];
     }
+
+    getFeedbackData(): Record<string, string[]> {
+        return this.feedbackData;
+    }
 }
 
 class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
@@ -309,6 +313,9 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 
                 // Update tree view with feedback data
                 this.treeDataProvider.updateFeedback(parsedJson, this.getShortFileName(fileName));
+                
+                // Show all feedback items in the details view
+                this.showAllFeedbackItems();
 
             } catch (error) {
                 vscode.window.showErrorMessage("Error reading JSON response file.");
@@ -321,6 +328,44 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             // Post AI response to webview
             this.postMessage(this.getShortFileName(fileName), responseJson);
         });
+    }
+
+    // Show all feedback items from all categories
+    showAllFeedbackItems() {
+        if (this._view) {
+            const allCategories = Object.keys(this.treeDataProvider.getFeedbackData());
+            const allItems: { category: string; content: string; type: 'error' | 'warning' | 'info' }[] = [];
+            
+            // Collect items from all categories
+            allCategories.forEach(category => {
+                const items = this.treeDataProvider.getFeedbackItems(category) || [];
+                const type = this.getCategoryType(category);
+                
+                // Skip empty categories or those with only "No issues found"
+                const actualItems = items.filter(item => 
+                    !item.toLowerCase().includes('no issues') && 
+                    !item.toLowerCase().includes('no problems') &&
+                    !item.toLowerCase().includes('✅')
+                );
+                
+                if (actualItems.length > 0) {
+                    actualItems.forEach(item => {
+                        allItems.push({
+                            category,
+                            content: item,
+                            type
+                        });
+                    });
+                }
+            });
+            
+            // Send all items to the webview
+            this._view.webview.postMessage({ 
+                command: 'showAllFeedbackItems',
+                items: allItems,
+                filename: this.treeDataProvider.getCurrentFile()
+            });
+        }
     }
 
     getView() {
@@ -339,15 +384,27 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             // If this is a category item (not a specific feedback item)
             if (item.contextValue === 'feedbackCategory') {
                 const categoryName = item.label.split(' (')[0];
-                const items = this.treeDataProvider.getFeedbackItems(categoryName);
+                const items = this.treeDataProvider.getFeedbackItems(categoryName) || [];
                 
-                if (items && items.length > 0) {
-                    // Show the first item in the category
-                    this._view.webview.postMessage({ 
-                        command: 'showItemDetails', 
+                // Filter out "No issues found" messages
+                const actualItems = items.filter(item => 
+                    !item.toLowerCase().includes('no issues') && 
+                    !item.toLowerCase().includes('no problems') &&
+                    !item.toLowerCase().includes('✅')
+                );
+                
+                if (actualItems.length > 0) {
+                    // Show all items in this category
+                    const categoryItems = actualItems.map(content => ({
                         category: categoryName,
-                        content: items[0],
+                        content,
                         type: this.getCategoryType(categoryName)
+                    }));
+                    
+                    this._view.webview.postMessage({ 
+                        command: 'showCategoryItems', 
+                        category: categoryName,
+                        items: categoryItems
                     });
                 } else {
                     // Show empty category message

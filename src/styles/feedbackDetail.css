@@ -4,9 +4,28 @@
     background-color: var(--vscode-editor-background, #1e1e1e);
     border: 1px solid var(--vscode-panel-border, #3c3c3c);
     border-radius: 3px;
-    margin: 12px 0;
+    margin: 8px 0;
     overflow: hidden;
     box-sizing: border-box;
+}
+
+/* When inside a category section, make panels more compact */
+.category-section .vscode-panel {
+    margin: 4px 0;
+    border-left-width: 2px;
+}
+
+/* Color-code panels based on type */
+.category-section .vscode-panel[data-type="error"] {
+    border-left-color: var(--vscode-errorForeground, #f87171);
+}
+
+.category-section .vscode-panel[data-type="warning"] {
+    border-left-color: var(--vscode-editorWarning-foreground, #facc15);
+}
+
+.category-section .vscode-panel[data-type="info"] {
+    border-left-color: var(--vscode-editorInfo-foreground, #10b981);
 }
 
 .vscode-panel-header {
@@ -38,6 +57,11 @@
     color: var(--vscode-foreground, #cccccc);
     width: 100%;
     box-sizing: border-box;
+}
+
+/* When inside a category section, make content more compact */
+.category-section .vscode-panel-content {
+    padding: 8px 12px;
 }
 
 /* VS Code-like list styling */

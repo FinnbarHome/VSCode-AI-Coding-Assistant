@@ -6,9 +6,15 @@ interface FeedbackDetailProps {
     category: string;
     content: string;
     type: 'error' | 'warning' | 'info';
+    showHeader?: boolean;
 }
 
-const FeedbackDetail: React.FC<FeedbackDetailProps> = ({ category, content, type }) => {
+const FeedbackDetail: React.FC<FeedbackDetailProps> = ({ 
+    category, 
+    content, 
+    type,
+    showHeader = true
+}) => {
     const getIcon = () => {
         switch (type) {
             case "error": return <AlertCircle color="#f87171" size={20} />;
@@ -78,15 +84,17 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({ category, content, type
     };
 
     return (
-        <div className="vscode-panel">
-            <div className="vscode-panel-header">
-                <div className="panel-header-icon">
-                    {getIcon()}
+        <div className="vscode-panel" data-type={type}>
+            {showHeader && (
+                <div className="vscode-panel-header">
+                    <div className="panel-header-icon">
+                        {getIcon()}
+                    </div>
+                    <div className="panel-header-title">
+                        {category}
+                    </div>
                 </div>
-                <div className="panel-header-title">
-                    {category}
-                </div>
-            </div>
+            )}
             <div className="vscode-panel-content">
                 {formatContent()}
             </div>
