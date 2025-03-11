@@ -9,26 +9,164 @@ const MAX_RETRIES = 3; // Avoid infinite loops
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Coding Assistant is now active!');
 
-    const provider = new AICodingWebviewViewProvider(context);
+    // Create tree data provider
+    const feedbackProvider = new FeedbackTreeDataProvider();
+    
+    // Register tree view
+    const treeView = vscode.window.createTreeView('aiCodingTreeView', {
+        treeDataProvider: feedbackProvider,
+        showCollapseAll: true
+    });
+    
+    // Register webview provider for details panel
+    const webviewProvider = new AICodingWebviewViewProvider(context, feedbackProvider);
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('aiCodingView', provider)
+        vscode.window.registerWebviewViewProvider('aiCodingDetailsView', webviewProvider)
     );
 
+    // Register command to analyze current file
+    context.subscriptions.push(
+        vscode.commands.registerCommand('aiCodingAssistant.analyzeCurrentFile', async () => {
+            await webviewProvider.handleAIAnalysis();
+            feedbackProvider.refresh();
+        })
+    );
+
+    // Update target file when active editor changes
     vscode.window.onDidChangeActiveTextEditor((editor) => {
-        if (editor && provider.getView()) {
-            provider.updateTargetFile(editor.document.fileName);
+        if (editor && webviewProvider.getView()) {
+            webviewProvider.updateTargetFile(editor.document.fileName);
         }
     });
+    
+    // Handle tree item selection
+    treeView.onDidChangeSelection(e => {
+        if (e.selection.length > 0) {
+            const item = e.selection[0];
+            webviewProvider.showItemDetails(item);
+        }
+    });
+    
+    context.subscriptions.push(treeView);
 }
 
 // For cleanup, called when the extension is deactivated
 export function deactivate() {}
 
+// Tree item class for feedback categories and items
+class FeedbackItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly category?: string,
+        public readonly content?: string,
+        public readonly type?: 'error' | 'warning' | 'info'
+    ) {
+        super(label, collapsibleState);
+        
+        // Set icon based on type
+        if (type) {
+            this.iconPath = new vscode.ThemeIcon(
+                type === 'error' ? 'error' : 
+                type === 'warning' ? 'warning' : 'info'
+            );
+        }
+        
+        // Set tooltip
+        this.tooltip = content || label;
+        
+        // Set context value for conditional view actions
+        this.contextValue = category ? 'feedbackItem' : 'feedbackCategory';
+    }
+}
+
+// Tree data provider for feedback
+class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<FeedbackItem | undefined | null | void> = new vscode.EventEmitter<FeedbackItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<FeedbackItem | undefined | null | void> = this._onDidChangeTreeData.event;
+    
+    private feedbackData: Record<string, string[]> = {
+        "Serious Problems": [],
+        "Warnings": [],
+        "Refactoring Suggestions": [],
+        "Coding Conventions": [],
+        "Performance Optimization": [],
+        "Security Issues": [],
+        "Best Practices": [],
+        "Readability and Maintainability": [],
+        "Code Smells": [],
+        "Educational Tips": []
+    };
+    
+    private currentFile: string = 'No file selected';
+    
+    constructor() {}
+    
+    getTreeItem(element: FeedbackItem): vscode.TreeItem {
+        return element;
+    }
+    
+    getChildren(element?: FeedbackItem): Thenable<FeedbackItem[]> {
+        if (!element) {
+            // Root level - return categories
+            return Promise.resolve(
+                Object.keys(this.feedbackData).map(category => {
+                    const itemCount = this.feedbackData[category].length;
+                    const label = `${category} (${itemCount})`;
+                    const state = itemCount > 0 
+                        ? vscode.TreeItemCollapsibleState.Collapsed 
+                        : vscode.TreeItemCollapsibleState.None;
+                    
+                    return new FeedbackItem(label, state);
+                })
+            );
+        } else {
+            // Category level - return feedback items
+            const categoryName = element.label.split(' (')[0];
+            const items = this.feedbackData[categoryName] || [];
+            
+            return Promise.resolve(
+                items.map(item => {
+                    // Determine item type based on category
+                    let type: 'error' | 'warning' | 'info' = 'info';
+                    if (categoryName === 'Serious Problems') type = 'error';
+                    else if (categoryName === 'Warnings' || categoryName === 'Security Issues') type = 'warning';
+                    
+                    return new FeedbackItem(
+                        item.length > 50 ? item.substring(0, 50) + '...' : item,
+                        vscode.TreeItemCollapsibleState.None,
+                        categoryName,
+                        item,
+                        type
+                    );
+                })
+            );
+        }
+    }
+    
+    updateFeedback(data: Record<string, string[]>, filename: string) {
+        this.feedbackData = data;
+        this.currentFile = filename;
+        this.refresh();
+    }
+    
+    getCurrentFile(): string {
+        return this.currentFile;
+    }
+    
+    refresh(): void {
+        this._onDidChangeTreeData.fire();
+    }
+}
+
 class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private supportedExtensions = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md'];
 
-    constructor(private readonly context: vscode.ExtensionContext) {}
+    constructor(
+        private readonly context: vscode.ExtensionContext,
+        private readonly treeDataProvider: FeedbackTreeDataProvider
+    ) {}
 
     resolveWebviewView(webviewView: vscode.WebviewView) {
         this._view = webviewView;
@@ -66,45 +204,63 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
 
         const prompt = `Review the following code:\n\n${truncatedContent}`;
 
-        // Get the file path where the response is saved
-        const responseFilePath = await getAIResponse(prompt);
-        if (!responseFilePath) {
-            vscode.window.showErrorMessage("Error retrieving AI response.");
-            return;
-        }
-
-        // Convert raw response to JSON and save it
-        const jsonFilePath = this.saveParsedResponse(responseFilePath);
-        if (!jsonFilePath) {
-            vscode.window.showErrorMessage("Error processing AI response.");
-            return;
-        }
-
-        // Read and check JSON data
-        let responseJson = "";
-        try {
-            responseJson = fs.readFileSync(jsonFilePath, 'utf-8');
-            const parsedJson = JSON.parse(responseJson);
-
-            // If JSON is blank, retry querying the AI
-            if (this.isBlankResponse(parsedJson)) {
-                if (retryCount < MAX_RETRIES) {
-                    console.warn(`⚠️ Blank AI response detected. Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-                    await this.handleAIAnalysis(retryCount + 1);
-                    return;
-                } else {
-                    vscode.window.showErrorMessage("AI returned an empty response multiple times. Please try again later.");
-                }
+        // Show progress indicator
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Analyzing code...",
+            cancellable: false
+        }, async (progress) => {
+            progress.report({ increment: 0 });
+            
+            // Get the file path where the response is saved
+            const responseFilePath = await getAIResponse(prompt);
+            if (!responseFilePath) {
+                vscode.window.showErrorMessage("Error retrieving AI response.");
+                return;
             }
+            
+            progress.report({ increment: 50 });
 
-        } catch (error) {
-            vscode.window.showErrorMessage("Error reading JSON response file.");
-            console.error("Error reading JSON file:", error);
-            return;
-        }
+            // Convert raw response to JSON and save it
+            const jsonFilePath = this.saveParsedResponse(responseFilePath);
+            if (!jsonFilePath) {
+                vscode.window.showErrorMessage("Error processing AI response.");
+                return;
+            }
+            
+            progress.report({ increment: 90 });
 
-        // Post AI response to webview
-        this.postMessage(this.getShortFileName(fileName), responseJson);
+            // Read and check JSON data
+            let responseJson = "";
+            try {
+                responseJson = fs.readFileSync(jsonFilePath, 'utf-8');
+                const parsedJson = JSON.parse(responseJson);
+
+                // If JSON is blank, retry querying the AI
+                if (this.isBlankResponse(parsedJson)) {
+                    if (retryCount < MAX_RETRIES) {
+                        console.warn(`⚠️ Blank AI response detected. Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                        await this.handleAIAnalysis(retryCount + 1);
+                        return;
+                    } else {
+                        vscode.window.showErrorMessage("AI returned an empty response multiple times. Please try again later.");
+                    }
+                }
+                
+                // Update tree view with feedback data
+                this.treeDataProvider.updateFeedback(parsedJson, this.getShortFileName(fileName));
+
+            } catch (error) {
+                vscode.window.showErrorMessage("Error reading JSON response file.");
+                console.error("Error reading JSON file:", error);
+                return;
+            }
+            
+            progress.report({ increment: 100 });
+
+            // Post AI response to webview
+            this.postMessage(this.getShortFileName(fileName), responseJson);
+        });
     }
 
     getView() {
@@ -115,6 +271,17 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         const shortName = this.getShortFileName(filePath);
         if (this._view) {
             this.postMessage(shortName, `Target file updated to: ${shortName}`);
+        }
+    }
+    
+    showItemDetails(item: FeedbackItem) {
+        if (this._view && item.content) {
+            this._view.webview.postMessage({ 
+                command: 'showItemDetails', 
+                category: item.category,
+                content: item.content,
+                type: item.type || 'info'
+            });
         }
     }
 
@@ -203,7 +370,6 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         return parsedData;
     }
     
-
     /**
      * Checks if JSON response is completely empty
      */

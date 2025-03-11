@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import Header from "./components/Header";
 import FeedbackSection from "./components/FeedbackSection";
+import FeedbackDetail from "./components/FeedbackDetail";
 import "./styles/global.css"; 
 
 // Acquire VSCode API
@@ -10,6 +11,11 @@ const vscode = acquireVsCodeApi();
 
 const VSCodeWebview: React.FC = () => {
     const [filename, setFilename] = React.useState<string>("None");
+    const [selectedItem, setSelectedItem] = React.useState<{
+        category?: string;
+        content?: string;
+        type?: 'error' | 'warning' | 'info';
+    } | null>(null);
     const [feedback, setFeedback] = React.useState<Record<string, string[]>>({
         "Serious Problems": [],
         "Warnings": [],
@@ -28,9 +34,16 @@ const VSCodeWebview: React.FC = () => {
         const messageHandler = (event: MessageEvent) => {
             const message = event.data;
             console.log("Received message from extension:", message);
+            
             if (message.command === "displayFileInfo") {
                 setFilename(message.filename);
                 processAIResponse(message.response);
+            } else if (message.command === "showItemDetails") {
+                setSelectedItem({
+                    category: message.category,
+                    content: message.content,
+                    type: message.type
+                });
             }
         };
 
@@ -81,19 +94,24 @@ const VSCodeWebview: React.FC = () => {
         <div className="webview-container">
             <Header />
 
-            <button onClick={sendRequest} className="get-feedback-btn">
-                Get Feedback
-            </button>
-
             <div className="info">
-                <strong>Currently Targeting:</strong> <span>{filename}</span>
+                <strong>Currently Analyzing:</strong> <span>{filename}</span>
             </div>
 
-            <div id="response">
-                {Object.keys(feedback).map(category => (
-                    <FeedbackSection key={category} title={category} content={feedback[category]} />
-                ))}
-            </div>
+            {selectedItem ? (
+                <FeedbackDetail 
+                    category={selectedItem.category || ''} 
+                    content={selectedItem.content || ''} 
+                    type={selectedItem.type || 'info'} 
+                />
+            ) : (
+                <div className="empty-state">
+                    <p>Select an item from the Feedback panel to view details</p>
+                    <button onClick={sendRequest} className="get-feedback-btn">
+                        Analyze Current File
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

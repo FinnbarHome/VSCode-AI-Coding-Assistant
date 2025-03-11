@@ -1,4 +1,3 @@
-
 # VSCode AI Coding Assistant
 ### 🎓 Year 4 Individual Project - Dundee University  
 **Author:** Finnbar Home  
@@ -22,6 +21,9 @@ The **VSCode AI Coding Assistant** is a **VS Code extension** designed to help *
 - ⚡ **Real-Time Feedback** – Reviews the active file and provides structured insights.  
 - 🎨 **Dark-Themed UI** – Clean, modern, and easy-to-read interface inside VS Code.  
 - 💡 **Beginner-Friendly Guidance** – Focuses on **learning over automation**, explaining fixes in simple terms.  
+- **Tree View Integration**: View feedback categories and items in a structured tree view
+- **Detailed Analysis**: Get in-depth analysis of your code with categorized feedback
+- **Interactive UI**: Select items in the tree view to see detailed information
 
 ## 🏗️ Tech Stack
 This project utilizes the following technologies:
@@ -94,11 +96,62 @@ etc
 ```
 
 ## 🤝 Contributions
-This project is part of **Finnbar Home’s** **Year 4 Individual Project** at **Dundee University**.  
+This project is part of **Finnbar Home's** **Year 4 Individual Project** at **Dundee University**.  
 
 🔹 If you have feedback or want to contribute, feel free to open an **Issue** on GitHub.
 
 ## 📜 License
 This project is for **academic purposes** and is **not intended for commercial use**.
+
+## 📜 Release Notes
+
+### 0.0.1
+
+Initial release of VSCode AI Coding Assistant with tree view integration.
+
+---
+
+## 📜 Development
+
+### 🛠️ Building the Extension
+
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. Run `npm run build` to build the extension
+4. Press F5 to launch the extension in debug mode
+
+### �� Project Structure
+
+- `src/extension.ts`: Main extension code
+- `src/ai.ts`: AI integration code
+- `src/webview.tsx`: React webview implementation
+- `src/components/`: React components
+- `src/styles/`: CSS styles
+
+## 📜 Supported File Types
+
+The extension supports the following file types:
+- JavaScript (.js)
+- TypeScript (.ts)
+- C++ (.cpp)
+- C (.c)
+- Java (.java)
+- Python (.py)
+- C# (.cs)
+- JSON (.json)
+- HTML (.html)
+- CSS (.css)
+- Markdown (.md)
+
+## 📜 Extension Settings
+
+This extension contributes the following settings:
+
+* `aiCodingAssistant.analyzeCurrentFile`: Analyze the currently open file
+
+## 📜 Known Issues
+
+- Large files may be truncated during analysis
+- Some complex code patterns might not be properly analyzed
 
 
