@@ -53,25 +53,27 @@ const VSCodeWebview: React.FC = () => {
                 <span className="info-value">{filename}</span>
             </div>
 
-            {isLoading ? (
-                <div className="loading">
-                    <div className="loading-spinner"></div>
-                    <p>Analyzing your code...</p>
-                </div>
-            ) : selectedItem ? (
-                <FeedbackDetail 
-                    category={selectedItem.category || ''} 
-                    content={selectedItem.content || ''} 
-                    type={selectedItem.type || 'info'} 
-                />
-            ) : (
-                <div className="empty-state">
-                    <p>Select an item from the Feedback panel to view details</p>
-                    <button className="vscode-button" onClick={sendRequest}>
-                        Analyze Current File
-                    </button>
-                </div>
-            )}
+            <div className="vscode-content-container">
+                {isLoading ? (
+                    <div className="loading">
+                        <div className="loading-spinner"></div>
+                        <p>Analyzing your code...</p>
+                    </div>
+                ) : selectedItem ? (
+                    <FeedbackDetail 
+                        category={selectedItem.category || ''} 
+                        content={selectedItem.content || ''} 
+                        type={selectedItem.type || 'info'} 
+                    />
+                ) : (
+                    <div className="empty-state">
+                        <p>Select an item from the Feedback panel to view details</p>
+                        <button className="vscode-button" onClick={sendRequest}>
+                            Analyze Current File
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

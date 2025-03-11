@@ -125,9 +125,18 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
             // Root level - return categories
             return Promise.resolve(
                 Object.keys(this.feedbackData).map(category => {
-                    const itemCount = this.feedbackData[category].length;
-                    const label = `${category} (${itemCount})`;
-                    const state = itemCount > 0 
+                    // Get items for this category
+                    const items = this.feedbackData[category] || [];
+                    
+                    // Filter out "No issues found" messages to get actual issue count
+                    const actualIssueCount = items.filter(item => 
+                        !item.toLowerCase().includes('no issues') && 
+                        !item.toLowerCase().includes('no problems') &&
+                        !item.toLowerCase().includes('✅')
+                    ).length;
+                    
+                    const label = `${category} (${actualIssueCount})`;
+                    const state = items.length > 0 
                         ? vscode.TreeItemCollapsibleState.Collapsed 
                         : vscode.TreeItemCollapsibleState.None;
                     
