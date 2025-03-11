@@ -16,6 +16,7 @@ const VSCodeWebview: React.FC = () => {
         content?: string;
         type?: 'error' | 'warning' | 'info';
     } | null>(null);
+    const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [feedback, setFeedback] = React.useState<Record<string, string[]>>({
         "Serious Problems": [],
         "Warnings": [],
@@ -38,6 +39,7 @@ const VSCodeWebview: React.FC = () => {
             if (message.command === "displayFileInfo") {
                 setFilename(message.filename);
                 processAIResponse(message.response);
+                setIsLoading(false);
             } else if (message.command === "showItemDetails") {
                 setSelectedItem({
                     category: message.category,
@@ -54,13 +56,17 @@ const VSCodeWebview: React.FC = () => {
     // Request AI analysis from VSCode extension
     const sendRequest = () => {
         console.log("Sending request to VSCode extension");
+        setIsLoading(true);
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
     // Parse AI response and update state
     const processAIResponse = (response: string) => {
         console.log("Processing AI response:", response);
-        if (!response) return;
+        if (!response) {
+            setIsLoading(false);
+            return;
+        }
 
         try {
             // Parse response as JSON
@@ -87,6 +93,8 @@ const VSCodeWebview: React.FC = () => {
                 command: "error",
                 message: "Failed to parse AI response. Please check the response format."
             });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -98,7 +106,12 @@ const VSCodeWebview: React.FC = () => {
                 <strong>Currently Analyzing:</strong> <span>{filename}</span>
             </div>
 
-            {selectedItem ? (
+            {isLoading ? (
+                <div className="loading">
+                    <div className="loading-spinner"></div>
+                    <p>Analyzing your code...</p>
+                </div>
+            ) : selectedItem ? (
                 <FeedbackDetail 
                     category={selectedItem.category || ''} 
                     content={selectedItem.content || ''} 

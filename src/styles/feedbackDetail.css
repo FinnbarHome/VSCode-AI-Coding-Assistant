@@ -64,6 +64,20 @@
     white-space: pre-wrap;
 }
 
+.feedback-detail-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.feedback-detail-list li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.feedback-detail-list li:last-child {
+    margin-bottom: 0;
+}
+
 .empty-state {
     display: flex;
     flex-direction: column;

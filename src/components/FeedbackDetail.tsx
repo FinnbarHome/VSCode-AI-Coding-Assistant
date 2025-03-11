@@ -25,6 +25,28 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({ category, content, type
         }
     };
 
+    // Format content as bullet points if it contains multiple items
+    const formatContent = () => {
+        // Check if content contains multiple sentences that could be bullet points
+        if (content.includes('. ') || content.includes('.\n')) {
+            // Split by period followed by space or newline, but keep the period
+            const sentences = content.split(/\.(?=\s|$)/).filter(s => s.trim().length > 0);
+            
+            if (sentences.length > 1) {
+                return (
+                    <ul className="feedback-detail-list">
+                        {sentences.map((sentence, index) => (
+                            <li key={index}>{sentence.trim()}{!sentence.endsWith('.') ? '.' : ''}</li>
+                        ))}
+                    </ul>
+                );
+            }
+        }
+        
+        // If not multiple sentences, just return as is
+        return <p>{content}</p>;
+    };
+
     return (
         <div className="feedback-detail">
             <div className="feedback-detail-header">
@@ -37,7 +59,7 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({ category, content, type
                 </div>
             </div>
             <div className="feedback-detail-content">
-                <p>{content}</p>
+                {formatContent()}
             </div>
         </div>
     );

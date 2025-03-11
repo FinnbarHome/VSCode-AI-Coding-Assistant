@@ -100,7 +100,21 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
     
     private currentFile: string = 'No file selected';
     
-    constructor() {}
+    constructor() {
+        // Initialize all categories with empty arrays
+        this.feedbackData = {
+            "Serious Problems": [],
+            "Warnings": [],
+            "Refactoring Suggestions": [],
+            "Coding Conventions": [],
+            "Performance Optimization": [],
+            "Security Issues": [],
+            "Best Practices": [],
+            "Readability and Maintainability": [],
+            "Code Smells": [],
+            "Educational Tips": []
+        };
+    }
     
     getTreeItem(element: FeedbackItem): vscode.TreeItem {
         return element;
@@ -145,9 +159,42 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
     }
     
     updateFeedback(data: Record<string, string[]>, filename: string) {
-        this.feedbackData = data;
+        // Ensure all categories exist in the data
+        const defaultCategories = [
+            "Serious Problems",
+            "Warnings",
+            "Refactoring Suggestions",
+            "Coding Conventions",
+            "Performance Optimization",
+            "Security Issues",
+            "Best Practices",
+            "Readability and Maintainability",
+            "Code Smells",
+            "Educational Tips"
+        ];
+        
+        // Create a new object with all categories
+        const updatedData: Record<string, string[]> = {};
+        
+        // Initialize all categories with empty arrays
+        defaultCategories.forEach(category => {
+            updatedData[category] = [];
+        });
+        
+        // Copy data from the parsed response
+        Object.keys(data).forEach(category => {
+            if (defaultCategories.includes(category)) {
+                updatedData[category] = data[category];
+            }
+        });
+        
+        // Update the feedback data
+        this.feedbackData = updatedData;
         this.currentFile = filename;
         this.refresh();
+        
+        // Log the updated data for debugging
+        console.log('Updated feedback data:', this.feedbackData);
     }
     
     getCurrentFile(): string {
@@ -156,6 +203,10 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
     
     refresh(): void {
         this._onDidChangeTreeData.fire();
+    }
+
+    getFeedbackItems(category: string): string[] | undefined {
+        return this.feedbackData[category];
     }
 }
 
@@ -275,14 +326,49 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
     
     showItemDetails(item: FeedbackItem) {
-        if (this._view && item.content) {
-            this._view.webview.postMessage({ 
-                command: 'showItemDetails', 
-                category: item.category,
-                content: item.content,
-                type: item.type || 'info'
-            });
+        if (this._view) {
+            // If this is a category item (not a specific feedback item)
+            if (item.contextValue === 'feedbackCategory') {
+                const categoryName = item.label.split(' (')[0];
+                const items = this.treeDataProvider.getFeedbackItems(categoryName);
+                
+                if (items && items.length > 0) {
+                    // Show the first item in the category
+                    this._view.webview.postMessage({ 
+                        command: 'showItemDetails', 
+                        category: categoryName,
+                        content: items[0],
+                        type: this.getCategoryType(categoryName)
+                    });
+                } else {
+                    // Show empty category message
+                    this._view.webview.postMessage({ 
+                        command: 'showItemDetails', 
+                        category: categoryName,
+                        content: 'No issues found in this category.',
+                        type: 'info'
+                    });
+                }
+            } 
+            // If this is a specific feedback item
+            else if (item.content) {
+                this._view.webview.postMessage({ 
+                    command: 'showItemDetails', 
+                    category: item.category || '',
+                    content: item.content,
+                    type: item.type || 'info'
+                });
+            }
         }
+    }
+
+    private getCategoryType(category: string): 'error' | 'warning' | 'info' {
+        if (category === 'Serious Problems') {
+            return 'error';
+        } else if (category === 'Warnings' || category === 'Security Issues') {
+            return 'warning';
+        }
+        return 'info';
     }
 
     private postMessage(filename: string, response: string) {
