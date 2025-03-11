@@ -116,9 +116,29 @@ const VSCodeWebview: React.FC = () => {
                 groupedItems[item.category].push(item);
             });
 
+            // Sort categories in a specific order
+            const categoryOrder = [
+                "Serious Problems",
+                "Warnings",
+                "Refactoring Suggestions",
+                "Coding Conventions",
+                "Performance Optimization",
+                "Security Issues",
+                "Best Practices",
+                "Readability and Maintainability",
+                "Code Smells",
+                "Educational Tips"
+            ];
+            
+            const sortedCategories = Object.keys(groupedItems).sort((a, b) => {
+                const indexA = categoryOrder.indexOf(a);
+                const indexB = categoryOrder.indexOf(b);
+                return indexA - indexB;
+            });
+
             return (
                 <div className="feedback-items-container">
-                    {Object.keys(groupedItems).map(category => (
+                    {sortedCategories.map(category => (
                         <div key={category} className="category-section">
                             <h3 className="category-title">{category}</h3>
                             {groupedItems[category].map((item, index) => (

@@ -77,9 +77,9 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
     // Get appropriate icon for list items
     const getItemIcon = (itemType: string) => {
         switch (itemType) {
-            case 'error': return '⚠️';
-            case 'warning': return '⚠';
-            default: return '📌';
+            case 'error': return '🔴'; // Red circle for errors
+            case 'warning': return '🟠'; // Orange circle for warnings
+            default: return '🔵'; // Blue circle for info
         }
     };
 

@@ -7,6 +7,8 @@
     margin: 8px 0;
     overflow: hidden;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 /* When inside a category section, make panels more compact */
@@ -36,6 +38,7 @@
     border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
     width: 100%;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .panel-header-icon {
@@ -57,11 +60,14 @@
     color: var(--vscode-foreground, #cccccc);
     width: 100%;
     box-sizing: border-box;
+    overflow-y: auto;
+    max-height: 300px; /* Limit height for very long content */
 }
 
 /* When inside a category section, make content more compact */
 .category-section .vscode-panel-content {
     padding: 8px 12px;
+    max-height: none; /* Don't limit height in category sections */
 }
 
 /* VS Code-like list styling */
@@ -77,12 +83,18 @@
     display: flex;
     align-items: flex-start;
     width: 100%;
+    margin-bottom: 6px;
+}
+
+.vscode-list-item:last-child {
+    margin-bottom: 0;
 }
 
 .list-item-content {
     display: flex;
     align-items: flex-start;
     width: 100%;
+    word-break: break-word;
 }
 
 .list-item-icon {
@@ -98,6 +110,7 @@
     align-items: flex-start;
     padding: 4px 0;
     width: 100%;
+    word-break: break-word;
 }
 
 /* Empty state styling */
