@@ -16,6 +16,11 @@
       {
         "command": "extension.readFileContent",
         "title": "Read File Content"
+      },
+      {
+        "command": "aiCodingAssistant.analyzeCurrentFile",
+        "title": "Analyze Current File",
+        "icon": "$(search)"
       }
     ],
     "viewsContainers": {
@@ -30,9 +35,23 @@
     "views": {
       "aiCodingAssistant": [
         {
-          "id": "aiCodingView",
-          "name": "AI Coding View",
+          "id": "aiCodingTreeView",
+          "name": "Feedback",
+          "type": "tree"
+        },
+        {
+          "id": "aiCodingDetailsView",
+          "name": "Details",
           "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "aiCodingAssistant.analyzeCurrentFile",
+          "when": "view == aiCodingTreeView",
+          "group": "navigation"
         }
       ]
     }

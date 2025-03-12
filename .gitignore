@@ -34,3 +34,5 @@ Thumbs.db
 *.temp
 combiner.py
 collected_files.txt
+responses/
+jsonresponses/

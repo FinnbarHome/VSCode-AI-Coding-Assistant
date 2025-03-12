@@ -3,130 +3,577 @@ import { getAIResponse } from './ai';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const MAX_RETRIES = 3; // Avoid infinite loops
+
 // Function called when the extension is activated
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Coding Assistant is now active!');
 
-    // Register the webview view provider for the activity bar view
-    const provider = new AICodingWebviewViewProvider(context);
+    // Create tree data provider
+    const feedbackProvider = new FeedbackTreeDataProvider();
+    
+    // Register tree view
+    const treeView = vscode.window.createTreeView('aiCodingTreeView', {
+        treeDataProvider: feedbackProvider,
+        showCollapseAll: true
+    });
+    
+    // Register webview provider for details panel
+    const webviewProvider = new AICodingWebviewViewProvider(context, feedbackProvider);
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(
-            'aiCodingView', // ID of view to link provider with (matches id in package.json)
-            provider // Create an instance of the provider class
-        )
+        vscode.window.registerWebviewViewProvider('aiCodingDetailsView', webviewProvider)
     );
 
-    // Update the webview whenever a new file is selected
+    // Register command to analyze current file
+    context.subscriptions.push(
+        vscode.commands.registerCommand('aiCodingAssistant.analyzeCurrentFile', async () => {
+            await webviewProvider.handleAIAnalysis();
+            feedbackProvider.refresh();
+        })
+    );
+
+    // Update target file when active editor changes
     vscode.window.onDidChangeActiveTextEditor((editor) => {
-        if (editor && provider.getView()) {
-            provider.updateTargetFile(editor.document.fileName);
+        if (editor && webviewProvider.getView()) {
+            webviewProvider.updateTargetFile(editor.document.fileName);
         }
     });
+    
+    // Handle tree item selection
+    treeView.onDidChangeSelection(e => {
+        if (e.selection.length > 0) {
+            const item = e.selection[0];
+            webviewProvider.showItemDetails(item);
+        }
+    });
+    
+    context.subscriptions.push(treeView);
 }
 
 // For cleanup, called when the extension is deactivated
 export function deactivate() {}
 
+// Tree item class for feedback categories and items
+class FeedbackItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly category?: string,
+        public readonly content?: string,
+        public readonly type?: 'error' | 'warning' | 'info'
+    ) {
+        super(label, collapsibleState);
+        
+        // Set icon based on type
+        if (type) {
+            this.iconPath = new vscode.ThemeIcon(
+                type === 'error' ? 'error' : 
+                type === 'warning' ? 'warning' : 'info'
+            );
+        }
+        
+        // Set tooltip
+        this.tooltip = content || label;
+        
+        // Set context value for conditional view actions
+        this.contextValue = category ? 'feedbackItem' : 'feedbackCategory';
+    }
+}
+
+// Tree data provider for feedback
+class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<FeedbackItem | undefined | null | void> = new vscode.EventEmitter<FeedbackItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<FeedbackItem | undefined | null | void> = this._onDidChangeTreeData.event;
+    
+    private feedbackData: Record<string, string[]> = {
+        "Serious Problems": [],
+        "Warnings": [],
+        "Refactoring Suggestions": [],
+        "Coding Conventions": [],
+        "Performance Optimization": [],
+        "Security Issues": [],
+        "Best Practices": [],
+        "Readability and Maintainability": [],
+        "Code Smells": [],
+        "Educational Tips": []
+    };
+    
+    private currentFile: string = 'No file selected';
+    
+    constructor() {
+        // Initialize all categories with empty arrays
+        this.feedbackData = {
+            "Serious Problems": [],
+            "Warnings": [],
+            "Refactoring Suggestions": [],
+            "Coding Conventions": [],
+            "Performance Optimization": [],
+            "Security Issues": [],
+            "Best Practices": [],
+            "Readability and Maintainability": [],
+            "Code Smells": [],
+            "Educational Tips": []
+        };
+    }
+    
+    getTreeItem(element: FeedbackItem): vscode.TreeItem {
+        return element;
+    }
+    
+    getChildren(element?: FeedbackItem): Thenable<FeedbackItem[]> {
+        if (!element) {
+            // Root level - return categories
+            return Promise.resolve(
+                Object.keys(this.feedbackData).map(category => {
+                    // Get items for this category
+                    const items = this.feedbackData[category] || [];
+                    
+                    // Filter out "No issues found" messages to get actual issue count
+                    const actualIssueCount = items.filter(item => 
+                        !item.toLowerCase().includes('no issues') && 
+                        !item.toLowerCase().includes('no problems') &&
+                        !item.toLowerCase().includes('✅')
+                    ).length;
+                    
+                    const label = `${category} (${actualIssueCount})`;
+                    const state = items.length > 0 
+                        ? vscode.TreeItemCollapsibleState.Collapsed 
+                        : vscode.TreeItemCollapsibleState.None;
+                    
+                    return new FeedbackItem(label, state);
+                })
+            );
+        } else {
+            // Category level - return feedback items
+            const categoryName = element.label.split(' (')[0];
+            const items = this.feedbackData[categoryName] || [];
+            
+            return Promise.resolve(
+                items.map(item => {
+                    // Determine item type based on category
+                    let type: 'error' | 'warning' | 'info' = 'info';
+                    if (categoryName === 'Serious Problems') type = 'error';
+                    else if (categoryName === 'Warnings' || categoryName === 'Security Issues') type = 'warning';
+                    
+                    return new FeedbackItem(
+                        item.length > 50 ? item.substring(0, 50) + '...' : item,
+                        vscode.TreeItemCollapsibleState.None,
+                        categoryName,
+                        item,
+                        type
+                    );
+                })
+            );
+        }
+    }
+    
+    updateFeedback(data: Record<string, string[]>, filename: string) {
+        // Ensure all categories exist in the data
+        const defaultCategories = [
+            "Serious Problems",
+            "Warnings",
+            "Refactoring Suggestions",
+            "Coding Conventions",
+            "Performance Optimization",
+            "Security Issues",
+            "Best Practices",
+            "Readability and Maintainability",
+            "Code Smells",
+            "Educational Tips"
+        ];
+        
+        // Create a new object with all categories
+        const updatedData: Record<string, string[]> = {};
+        
+        // Initialize all categories with empty arrays
+        defaultCategories.forEach(category => {
+            updatedData[category] = [];
+        });
+        
+        // Copy data from the parsed response
+        Object.keys(data).forEach(category => {
+            if (defaultCategories.includes(category)) {
+                updatedData[category] = data[category];
+            }
+        });
+        
+        // Update the feedback data
+        this.feedbackData = updatedData;
+        this.currentFile = filename;
+        this.refresh();
+        
+        // Log the updated data for debugging
+        console.log('Updated feedback data:', this.feedbackData);
+    }
+    
+    getCurrentFile(): string {
+        return this.currentFile;
+    }
+    
+    refresh(): void {
+        this._onDidChangeTreeData.fire();
+    }
+
+    getFeedbackItems(category: string): string[] | undefined {
+        return this.feedbackData[category];
+    }
+
+    getFeedbackData(): Record<string, string[]> {
+        return this.feedbackData;
+    }
+}
+
 class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private supportedExtensions = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md'];
 
-    constructor(private readonly context: vscode.ExtensionContext) {}
+    constructor(
+        private readonly context: vscode.ExtensionContext,
+        private readonly treeDataProvider: FeedbackTreeDataProvider
+    ) {}
 
-    // Automatically triggered when a user clicks on the activity bar
     resolveWebviewView(webviewView: vscode.WebviewView) {
         this._view = webviewView;
-    
-        webviewView.webview.options = {
-            enableScripts: true, // Allows JavaScript execution in the webview
-        };
-    
-        // Set the initial content of the webview
-        const scriptUri = webviewView.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, "out", "webview.js")
-        );
-        
+        webviewView.webview.options = { enableScripts: true };
         webviewView.webview.html = this.getHtmlContent(webviewView.webview);
 
-        
-    
-        // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(async (message) => {
             if (message.command === 'getAIAnalysis') {
-                const activeEditor = vscode.window.activeTextEditor;
-                if (!activeEditor) {
-                    vscode.window.showErrorMessage('No active editor found. Open a file to get feedback on your code.');
-                    this.postMessage('No file selected', 'Please open a file to analyze.');
-                    return;
-                }
-    
-                const fileName = activeEditor.document.fileName;
-                const extension = this.getFileExtension(fileName);
-    
-                // Check if the file type is supported
-                if (!this.supportedExtensions.includes(extension)) {
-                    vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
-                    this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
-                    return;
-                }
-    
-                const fileContent = activeEditor.document.getText();
-    
-                // Limit file content to 2048 characters
-                const truncatedContent = fileContent.length > 2048
-                    ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
-                    : fileContent;
-    
-                // Construct AI prompt
-                const prompt = `Review the following code and categorize the feedback into: Serious Problems, Warnings, Refactoring Suggestions, Coding Conventions, Performance Optimization, Security Issues, Best Practices, Readability and Maintainability, Code Smells, and Educational Tips.\n\n${truncatedContent}`;
-    
-                // Show loading message
-                this.postMessage(this.getShortFileName(fileName), "⏳ Analyzing your code... Please wait.");
-    
-                // Call OpenAI API
-                const response = await getAIResponse(prompt);
-    
-                // Post AI response to webview
-                this.postMessage(this.getShortFileName(fileName), response);
+                await this.handleAIAnalysis();
             }
         });
     }
-    
 
-    // Get the webview instance
+    async handleAIAnalysis(retryCount = 0) {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            vscode.window.showErrorMessage('No active editor found.');
+            this.postMessage('No file selected', 'Please open a file to analyze.');
+            return;
+        }
+
+        const fileName = activeEditor.document.fileName;
+        const extension = this.getFileExtension(fileName);
+
+        if (!this.supportedExtensions.includes(extension)) {
+            vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
+            this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported.`);
+            return;
+        }
+
+        const fileContent = activeEditor.document.getText();
+        const truncatedContent = fileContent.length > 2048
+            ? fileContent.slice(0, 2048) + '\n\n[Content truncated due to length]'
+            : fileContent;
+
+        const prompt = `Review the following code:\n\n${truncatedContent}`;
+
+        // Show progress indicator
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Analyzing code...",
+            cancellable: false
+        }, async (progress) => {
+            progress.report({ increment: 0 });
+            
+            // Get the file path where the response is saved
+            const responseFilePath = await getAIResponse(prompt);
+            if (!responseFilePath) {
+                vscode.window.showErrorMessage("Error retrieving AI response.");
+                return;
+            }
+            
+            progress.report({ increment: 50 });
+
+            // Convert raw response to JSON and save it
+            const jsonFilePath = this.saveParsedResponse(responseFilePath);
+            if (!jsonFilePath) {
+                vscode.window.showErrorMessage("Error processing AI response.");
+                return;
+            }
+            
+            progress.report({ increment: 90 });
+
+            // Read and check JSON data
+            let responseJson = "";
+            try {
+                responseJson = fs.readFileSync(jsonFilePath, 'utf-8');
+                const parsedJson = JSON.parse(responseJson);
+
+                // If JSON is blank, retry querying the AI
+                if (this.isBlankResponse(parsedJson)) {
+                    if (retryCount < MAX_RETRIES) {
+                        console.warn(`⚠️ Blank AI response detected. Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                        await this.handleAIAnalysis(retryCount + 1);
+                        return;
+                    } else {
+                        vscode.window.showErrorMessage("AI returned an empty response multiple times. Please try again later.");
+                    }
+                }
+                
+                // Update tree view with feedback data
+                this.treeDataProvider.updateFeedback(parsedJson, this.getShortFileName(fileName));
+                
+                // Show all feedback items in the details view
+                this.showAllFeedbackItems();
+
+            } catch (error) {
+                vscode.window.showErrorMessage("Error reading JSON response file.");
+                console.error("Error reading JSON file:", error);
+                return;
+            }
+            
+            progress.report({ increment: 100 });
+
+            // Post AI response to webview
+            this.postMessage(this.getShortFileName(fileName), responseJson);
+        });
+    }
+
+    // Show all feedback items from all categories
+    showAllFeedbackItems() {
+        if (this._view) {
+            const allCategories = Object.keys(this.treeDataProvider.getFeedbackData());
+            const allItems: { category: string; content: string; type: 'error' | 'warning' | 'info' }[] = [];
+            
+            // Collect items from all categories
+            allCategories.forEach(category => {
+                const items = this.treeDataProvider.getFeedbackItems(category) || [];
+                const type = this.getCategoryType(category);
+                
+                // Skip empty categories or those with only "No issues found"
+                const actualItems = items.filter(item => 
+                    !item.toLowerCase().includes('no issues') && 
+                    !item.toLowerCase().includes('no problems') &&
+                    !item.toLowerCase().includes('✅')
+                );
+                
+                if (actualItems.length > 0) {
+                    actualItems.forEach(item => {
+                        allItems.push({
+                            category,
+                            content: item,
+                            type
+                        });
+                    });
+                }
+            });
+            
+            // Send all items to the webview
+            this._view.webview.postMessage({ 
+                command: 'showAllFeedbackItems',
+                items: allItems,
+                filename: this.treeDataProvider.getCurrentFile()
+            });
+        }
+    }
+
     getView() {
         return this._view;
     }
 
-    // Update the targeted file in the webview
     updateTargetFile(filePath: string) {
         const shortName = this.getShortFileName(filePath);
         if (this._view) {
             this.postMessage(shortName, `Target file updated to: ${shortName}`);
         }
     }
+    
+    showItemDetails(item: FeedbackItem) {
+        if (this._view) {
+            // If this is a category item (not a specific feedback item)
+            if (item.contextValue === 'feedbackCategory') {
+                const categoryName = item.label.split(' (')[0];
+                const items = this.treeDataProvider.getFeedbackItems(categoryName) || [];
+                
+                // Filter out "No issues found" messages
+                const actualItems = items.filter(item => 
+                    !item.toLowerCase().includes('no issues') && 
+                    !item.toLowerCase().includes('no problems') &&
+                    !item.toLowerCase().includes('✅')
+                );
+                
+                if (actualItems.length > 0) {
+                    // Show all items in this category
+                    const categoryItems = actualItems.map(content => ({
+                        category: categoryName,
+                        content,
+                        type: this.getCategoryType(categoryName)
+                    }));
+                    
+                    this._view.webview.postMessage({ 
+                        command: 'showCategoryItems', 
+                        category: categoryName,
+                        items: categoryItems
+                    });
+                } else {
+                    // Show empty category message
+                    this._view.webview.postMessage({ 
+                        command: 'showItemDetails', 
+                        category: categoryName,
+                        content: 'No issues found in this category.',
+                        type: 'info'
+                    });
+                }
+            } 
+            // If this is a specific feedback item
+            else if (item.content) {
+                this._view.webview.postMessage({ 
+                    command: 'showItemDetails', 
+                    category: item.category || '',
+                    content: item.content,
+                    type: item.type || 'info'
+                });
+            }
+        }
+    }
 
-    // Helper method to send messages to the webview
+    private getCategoryType(category: string): 'error' | 'warning' | 'info' {
+        if (category === 'Serious Problems') {
+            return 'error';
+        } else if (category === 'Warnings' || category === 'Security Issues') {
+            return 'warning';
+        }
+        return 'info';
+    }
+
     private postMessage(filename: string, response: string) {
         this._view?.webview.postMessage({ command: 'displayFileInfo', filename, response });
     }
 
-    // Helper method to get short file name
     private getShortFileName(filePath: string): string {
         return filePath.split(/[\\/]/).pop() || 'Unknown File';
     }
 
-    // Helper method to get file extension
     private getFileExtension(filePath: string): string {
         return filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
     }
+
+    /**
+     * Saves parsed AI response as JSON
+     */
+    private saveParsedResponse(responseFilePath: string): string | null {
+        const jsonResponsesDir = path.resolve(__dirname, '../jsonresponses');
+        if (!fs.existsSync(jsonResponsesDir)) {
+            fs.mkdirSync(jsonResponsesDir, { recursive: true });
+        }
+
+        try {
+            const rawResponse = fs.readFileSync(responseFilePath, 'utf-8');
+            const parsedData = this.parseAIResponse(rawResponse);
+
+            // Generate JSON filename
+            const jsonFileName = `response-${new Date().toISOString().replace(/:/g, '-')}.json`;
+            const jsonFilePath = path.join(jsonResponsesDir, jsonFileName);
+
+            fs.writeFileSync(jsonFilePath, JSON.stringify(parsedData, null, 2), 'utf-8');
+            console.log(`✅ Parsed AI response saved to: ${jsonFilePath}`);
+            return jsonFilePath;
+        } catch (error) {
+            console.error("Error parsing and saving AI response:", error);
+            return null;
+        }
+    }
+
+    /**
+     * Parses the AI response text into structured JSON
+     */
+    private parseAIResponse(response: string): Record<string, string[]> {
+        const parsedData: Record<string, string[]> = {
+            "Serious Problems": [],
+            "Warnings": [],
+            "Refactoring Suggestions": [],
+            "Coding Conventions": [],
+            "Performance Optimization": [],
+            "Security Issues": [],
+            "Best Practices": [],
+            "Readability and Maintainability": [],
+            "Code Smells": [],
+            "Educational Tips": []
+        };
+        
+        let currentCategory: string = "Serious Problems"; // Default category
     
-    // Generate React-based WebView HTML
+        // Split response by lines and process
+        const lines = response.split('\n');
+        
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            
+            // Skip empty lines
+            if (!line) continue;
+            
+            // Check for category headers (#### Category Name)
+            const categoryMatch = line.match(/^#{1,4}\s+(.+)$/);
+            if (categoryMatch) {
+                const categoryName = categoryMatch[1].trim();
+                
+                // Check if this is one of our known categories
+                if (parsedData.hasOwnProperty(categoryName)) {
+                    currentCategory = categoryName;
+                    continue;
+                }
+            }
+            
+            // Process bullet points and content
+            if (line.startsWith('-') || line.match(/^\d+\./)) {
+                // This is a bullet point
+                let bulletPoint = line.replace(/^-\s*/, '').replace(/^\d+\.\s*/, '').trim();
+                
+                // Continue collecting content for this bullet point
+                while (i + 1 < lines.length) {
+                    const nextLine = lines[i + 1].trim();
+                    
+                    // Stop if we hit a new bullet point or category
+                    if (nextLine.startsWith('-') || 
+                        nextLine.match(/^\d+\./) || 
+                        nextLine.match(/^#{1,4}\s+/) ||
+                        !nextLine) {
+                        break;
+                    }
+                    
+                    // Add the next line to the current bullet point
+                    bulletPoint += ' ' + nextLine;
+                    i++;
+                }
+                
+                // Add the bullet point to the current category
+                parsedData[currentCategory].push(bulletPoint);
+            }
+            // Handle "No issues found" or similar messages
+            else if (!line.match(/^#{1,4}\s+/) && !line.startsWith('-') && !line.match(/^\d+\./)) {
+                // This is a plain text line, not a bullet point or category header
+                // Check if it contains "No issues found" or similar
+                if (line.toLowerCase().includes('no issues') || 
+                    line.toLowerCase().includes('no problems') ||
+                    line.toLowerCase().includes('✅')) {
+                    // Don't add these as they're handled by the UI
+                    continue;
+                }
+                
+                // Otherwise, add as a bullet point
+                parsedData[currentCategory].push(line);
+            }
+        }
+        
+        // Log the parsed data for debugging
+        console.log('Parsed AI response:', parsedData);
+        
+        return parsedData;
+    }
+    
+    /**
+     * Checks if JSON response is completely empty
+     */
+    private isBlankResponse(parsedJson: Record<string, string[]>): boolean {
+        return Object.values(parsedJson).every(arr => arr.length === 0);
+    }
+
     private getHtmlContent(webview: vscode.Webview): string {
         const scriptUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this.context.extensionUri, "out", "webview.js")
         );
-    
+
         return `
             <!DOCTYPE html>
             <html lang="en">
@@ -147,7 +594,4 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             </html>
         `;
     }
-    
-    
-    
 }
