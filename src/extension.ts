@@ -152,8 +152,8 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
                 items.map(item => {
                     // Determine item type based on category
                     let type: 'error' | 'warning' | 'info' = 'info';
-                    if (categoryName === 'Serious Problems') type = 'error';
-                    else if (categoryName === 'Warnings' || categoryName === 'Security Issues') type = 'warning';
+                    if (categoryName === 'Serious Problems') { type = 'error'; }
+                    else if (categoryName === 'Warnings' || categoryName === 'Security Issues') { type = 'warning'; }
                     
                     return new FeedbackItem(
                         item.length > 50 ? item.substring(0, 50) + '...' : item,
@@ -501,7 +501,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             let line = lines[i].trim();
             
             // Skip empty lines
-            if (!line) continue;
+            if (!line) { continue; }
             
             // Check for category headers (#### Category Name)
             const categoryMatch = line.match(/^#{1,4}\s+(.+)$/);
