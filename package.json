@@ -16,6 +16,11 @@
       {
         "command": "extension.readFileContent",
         "title": "Read File Content"
+      },
+      {
+        "command": "aiCodingAssistant.analyzeCurrentFile",
+        "title": "Analyze Current File",
+        "icon": "$(search)"
       }
     ],
     "viewsContainers": {
@@ -30,15 +35,30 @@
     "views": {
       "aiCodingAssistant": [
         {
-          "id": "aiCodingView",
-          "name": "AI Coding View",
+          "id": "aiCodingTreeView",
+          "name": "Feedback",
+          "type": "tree"
+        },
+        {
+          "id": "aiCodingDetailsView",
+          "name": "Details",
           "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "aiCodingAssistant.analyzeCurrentFile",
+          "when": "view == aiCodingTreeView",
+          "group": "navigation"
         }
       ]
     }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "build": "tsc && webpack",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src",
@@ -52,11 +72,22 @@
     "@typescript-eslint/parser": "^8.7.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "css-loader": "^7.1.2",
     "eslint": "^9.13.0",
-    "typescript": "^5.6.3"
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.6.3",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "classnames": "^2.5.1",
     "dotenv": "^16.4.7",
-    "openai": "^4.73.1"
+    "lucide-react": "^0.475.0",
+    "openai": "^4.73.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

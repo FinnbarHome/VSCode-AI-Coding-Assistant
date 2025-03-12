@@ -1,0 +1,55 @@
+/* Collapsible Sections */
+.category {
+    background: #252526;
+    border: 1px solid #444;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 8px rgba(0, 122, 204, 0.2);
+    width: 100%;
+    max-width: 800px;
+    min-width: 300px;
+    margin: 10px auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    flex-grow: 1;
+    flex-shrink: 0;
+}
+
+/* Prevents width changes on expansion */
+.category[open] {
+    width: 100%;
+    max-width: 800px;
+    min-width: 300px;
+}
+
+/* Centering the category title */
+.category summary {
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #ffffff;
+    padding: 8px 12px;
+    list-style: none;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center; 
+    text-align: center; 
+}
+
+.category summary:hover {
+    color: #007acc;
+}
+
+.category .content {
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
