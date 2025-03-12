@@ -1,0 +1,174 @@
+/* VS Code-like panel styling */
+.vscode-panel {
+    width: 100%;
+    background-color: var(--vscode-editor-background, #1e1e1e);
+    border: 1px solid var(--vscode-panel-border, #3c3c3c);
+    border-radius: 3px;
+    margin: 8px 0;
+    overflow: hidden;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+/* When inside a category section, make panels more compact */
+.category-section .vscode-panel {
+    margin: 4px 0;
+    border-left-width: 2px;
+}
+
+/* Color-code panels based on type */
+.category-section .vscode-panel[data-type="error"] {
+    border-left-color: var(--vscode-errorForeground, #f87171);
+}
+
+.category-section .vscode-panel[data-type="warning"] {
+    border-left-color: var(--vscode-editorWarning-foreground, #facc15);
+}
+
+.category-section .vscode-panel[data-type="info"] {
+    border-left-color: var(--vscode-editorInfo-foreground, #10b981);
+}
+
+.vscode-panel-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: var(--vscode-panel-background, #252526);
+    border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.panel-header-icon {
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.panel-header-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--vscode-foreground, #cccccc);
+}
+
+.vscode-panel-content {
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--vscode-foreground, #cccccc);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+    max-height: 300px; /* Limit height for very long content */
+}
+
+/* When inside a category section, make content more compact */
+.category-section .vscode-panel-content {
+    padding: 8px 12px;
+    max-height: none; /* Don't limit height in category sections */
+}
+
+/* VS Code-like list styling */
+.vscode-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+}
+
+.vscode-list-item {
+    padding: 4px 0;
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.vscode-list-item:last-child {
+    margin-bottom: 0;
+}
+
+.list-item-content {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    word-break: break-word;
+}
+
+.list-item-icon {
+    margin-right: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+/* Single item styling */
+.single-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 4px 0;
+    width: 100%;
+    word-break: break-word;
+}
+
+/* Empty state styling */
+.feedback-empty {
+    display: flex;
+    align-items: center;
+    color: var(--vscode-disabledForeground, #888888);
+    font-style: italic;
+    width: 100%;
+}
+
+.feedback-checkmark {
+    color: var(--vscode-terminal-ansiGreen, #89d185);
+    margin-right: 8px;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/* Loading state */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.loading-spinner {
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top: 2px solid var(--vscode-progressBar-background, #0e70c0);
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 12px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.empty-state p {
+    margin-bottom: 16px;
+    color: var(--vscode-disabledForeground, #888888);
+    font-size: 13px;
+} 
