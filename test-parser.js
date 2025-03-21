@@ -165,7 +165,7 @@ function extractBulletPointsWithCodeBlocks(content) {
     const bulletPoints = [];
     
     // Check if content is empty
-    if (!content.trim()) return bulletPoints;
+    if (!content.trim()) {return bulletPoints;}
     
     // Split content into lines for processing
     const lines = content.split('\n');

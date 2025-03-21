@@ -61,6 +61,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background-color 0.2s;
 }
 
 .vscode-button:hover {
@@ -69,6 +70,42 @@ body {
 
 .vscode-button:active {
     background-color: var(--vscode-button-pressedBackground, #0e5c8f);
+}
+
+/* Report button styling */
+.report-button {
+    background-color: var(--vscode-editorInfo-foreground, #10b981);
+    margin-left: 8px;
+}
+
+.report-button:hover {
+    background-color: #0ea477;
+}
+
+.report-button:active {
+    background-color: #0c9269;
+}
+
+/* Action bar for buttons */
+.action-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+
+/* Empty state buttons container */
+.empty-state-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+/* Report info message */
+.report-info {
+    margin-top: 12px;
+    color: var(--vscode-editorInfo-foreground, #10b981);
+    font-style: italic;
 }
 
 /* Root container */

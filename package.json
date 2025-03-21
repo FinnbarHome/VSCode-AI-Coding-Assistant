@@ -21,6 +21,11 @@
         "command": "aiCodingAssistant.analyzeCurrentFile",
         "title": "Analyze Current File",
         "icon": "$(search)"
+      },
+      {
+        "command": "aiCodingAssistant.generatePDFReport",
+        "title": "Generate Comprehensive Report",
+        "icon": "$(file-pdf)"
       }
     ],
     "viewsContainers": {
@@ -50,6 +55,11 @@
       "view/title": [
         {
           "command": "aiCodingAssistant.analyzeCurrentFile",
+          "when": "view == aiCodingTreeView",
+          "group": "navigation"
+        },
+        {
+          "command": "aiCodingAssistant.generatePDFReport",
           "when": "view == aiCodingTreeView",
           "group": "navigation"
         }
