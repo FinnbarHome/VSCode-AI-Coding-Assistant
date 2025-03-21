@@ -78,7 +78,11 @@ export async function getAIResponse(prompt: string): Promise<string> {
 
                     - ❌ Do **not** add introductions, summaries, or extra text.
                     - ❌ Do **not** create additional sections.
-                    - ✅ Format all section headers exactly as shown (**#### Category Name**).`
+                    - ✅ Format all section headers exactly as shown (**#### Category Name**).
+                    - ✅ For suggestions that would benefit from code examples, include them in a code block using \`\`\`language
+                    - ✅ Include code snippets when they would be helpful
+                    - ✅ Keep code snippets concise and focused on the specific issue
+                    - ✅ Use appropriate language tags in code blocks (e.g., \`\`\`typescript, \`\`\`javascript, etc.)`
                 },
                 { role: "user", content: prompt },
             ],

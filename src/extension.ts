@@ -466,9 +466,28 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             const jsonFileName = `response-${new Date().toISOString().replace(/:/g, '-')}.json`;
             const jsonFilePath = path.join(jsonResponsesDir, jsonFileName);
 
-            fs.writeFileSync(jsonFilePath, JSON.stringify(parsedData, null, 2), 'utf-8');
-            console.log(`✅ Parsed AI response saved to: ${jsonFilePath}`);
-            return jsonFilePath;
+            // Ensure the parsed data is valid JSON before saving
+            try {
+                // Test if the data can be stringified and parsed back
+                const jsonString = JSON.stringify(parsedData, null, 2);
+                JSON.parse(jsonString); // This will throw if invalid
+                
+                // Write the file if valid
+                fs.writeFileSync(jsonFilePath, jsonString, 'utf-8');
+                console.log(`✅ Parsed AI response saved to: ${jsonFilePath}`);
+                return jsonFilePath;
+            } catch (jsonError) {
+                console.error("Error creating valid JSON:", jsonError);
+                
+                // Attempt to fix the data by cleaning it
+                const cleanedData = this.cleanParsedData(parsedData);
+                const cleanedJson = JSON.stringify(cleanedData, null, 2);
+                
+                // Save the cleaned data
+                fs.writeFileSync(jsonFilePath, cleanedJson, 'utf-8');
+                console.log(`⚠️ Saved cleaned JSON response to: ${jsonFilePath}`);
+                return jsonFilePath;
+            }
         } catch (error) {
             console.error("Error parsing and saving AI response:", error);
             return null;
@@ -476,9 +495,63 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     /**
+     * Cleans parsed data to ensure it's valid JSON
+     */
+    private cleanParsedData(data: Record<string, string[]>): Record<string, string[]> {
+        const cleanedData: Record<string, string[]> = {};
+        
+        // Initialize all categories
+        const categories = [
+            "Serious Problems",
+            "Warnings",
+            "Refactoring Suggestions",
+            "Coding Conventions",
+            "Performance Optimization",
+            "Security Issues",
+            "Best Practices",
+            "Readability and Maintainability",
+            "Code Smells",
+            "Educational Tips"
+        ];
+        
+        categories.forEach(category => {
+            cleanedData[category] = [];
+        });
+        
+        // Process each category
+        Object.keys(data).forEach(category => {
+            // Skip if category is not recognized
+            if (!categories.includes(category)) {
+                return;
+            }
+            
+            // Process each item in the category
+            if (Array.isArray(data[category])) {
+                data[category].forEach(item => {
+                    // Skip if item is not a string
+                    if (typeof item !== 'string') {
+                        return;
+                    }
+                    
+                    // Skip empty items
+                    if (!item.trim()) {
+                        return;
+                    }
+                    
+                    // Add the item to the cleaned data
+                    cleanedData[category].push(item);
+                });
+            }
+        });
+        
+        return cleanedData;
+    }
+
+    /**
      * Parses the AI response text into structured JSON
      */
     private parseAIResponse(response: string): Record<string, string[]> {
+        // Initialize with all required categories
         const parsedData: Record<string, string[]> = {
             "Serious Problems": [],
             "Warnings": [],
@@ -492,67 +565,70 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             "Educational Tips": []
         };
         
-        let currentCategory: string = "Serious Problems"; // Default category
-    
-        // Split response by lines and process
-        const lines = response.split('\n');
+        // Check if response is empty or invalid
+        if (!response || response.trim().length === 0) {
+            console.warn("Empty AI response received");
+            return parsedData;
+        }
         
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i].trim();
+        // First, normalize the response by removing excessive whitespace at the beginning of lines
+        // and normalizing line endings to \n
+        const normalizedResponse = response
+            .replace(/\r\n/g, '\n')  // Normalize Windows line endings
+            .replace(/^\s+/gm, '')
+            .trim();
+        
+        // Split the response by main section headers
+        const sectionRegex = /####\s+([^\n]+)/g;
+        let match;
+        let lastIndex = 0;
+        const sections: { name: string, content: string }[] = [];
+        
+        while ((match = sectionRegex.exec(normalizedResponse)) !== null) {
+            const headerStart = match.index;
+            const headerEnd = match.index + match[0].length;
+            const sectionName = match[1].trim();
             
-            // Skip empty lines
-            if (!line) { continue; }
-            
-            // Check for category headers (#### Category Name)
-            const categoryMatch = line.match(/^#{1,4}\s+(.+)$/);
-            if (categoryMatch) {
-                const categoryName = categoryMatch[1].trim();
-                
-                // Check if this is one of our known categories
-                if (parsedData.hasOwnProperty(categoryName)) {
-                    currentCategory = categoryName;
-                    continue;
-                }
+            // If this isn't the first match, extract the content of the previous section
+            if (lastIndex > 0) {
+                const sectionContent = normalizedResponse.substring(lastIndex, headerStart).trim();
+                sections.push({ name: sections[sections.length - 1].name, content: sectionContent });
             }
             
-            // Process bullet points and content
-            if (line.startsWith('-') || line.match(/^\d+\./)) {
-                // This is a bullet point
-                let bulletPoint = line.replace(/^-\s*/, '').replace(/^\d+\.\s*/, '').trim();
-                
-                // Continue collecting content for this bullet point
-                while (i + 1 < lines.length) {
-                    const nextLine = lines[i + 1].trim();
-                    
-                    // Stop if we hit a new bullet point or category
-                    if (nextLine.startsWith('-') || 
-                        nextLine.match(/^\d+\./) || 
-                        nextLine.match(/^#{1,4}\s+/) ||
-                        !nextLine) {
-                        break;
-                    }
-                    
-                    // Add the next line to the current bullet point
-                    bulletPoint += ' ' + nextLine;
-                    i++;
-                }
-                
-                // Add the bullet point to the current category
-                parsedData[currentCategory].push(bulletPoint);
+            // Add this section header
+            sections.push({ name: sectionName, content: '' });
+            lastIndex = headerEnd;
+        }
+        
+        // Add the content for the last section
+        if (lastIndex > 0 && lastIndex < normalizedResponse.length) {
+            const sectionContent = normalizedResponse.substring(lastIndex).trim();
+            sections.push({ name: sections[sections.length - 1].name, content: sectionContent });
+            // Remove the duplicate empty section
+            sections.splice(sections.length - 2, 1);
+        }
+        
+        // Process each section
+        for (let i = 0; i < sections.length; i++) {
+            const section = sections[i];
+            if (!section.content.trim()) continue;
+            
+            // Skip if category is not recognized
+            if (!parsedData.hasOwnProperty(section.name)) continue;
+            
+            // Handle "No issues found" case
+            if (section.content.toLowerCase().includes('no issues found') || 
+                section.content.toLowerCase().includes('no problems') ||
+                section.content.toLowerCase().includes('✅')) {
+                continue; // Skip adding these as they're handled by the UI
             }
-            // Handle "No issues found" or similar messages
-            else if (!line.match(/^#{1,4}\s+/) && !line.startsWith('-') && !line.match(/^\d+\./)) {
-                // This is a plain text line, not a bullet point or category header
-                // Check if it contains "No issues found" or similar
-                if (line.toLowerCase().includes('no issues') || 
-                    line.toLowerCase().includes('no problems') ||
-                    line.toLowerCase().includes('✅')) {
-                    // Don't add these as they're handled by the UI
-                    continue;
-                }
-                
-                // Otherwise, add as a bullet point
-                parsedData[currentCategory].push(line);
+            
+            // Extract bullet points from the content
+            const bulletPoints = this.extractBulletPointsWithCodeBlocks(section.content);
+            
+            // Add bullet points to the category
+            if (bulletPoints.length > 0) {
+                parsedData[section.name] = bulletPoints;
             }
         }
         
@@ -567,6 +643,75 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
      */
     private isBlankResponse(parsedJson: Record<string, string[]>): boolean {
         return Object.values(parsedJson).every(arr => arr.length === 0);
+    }
+
+    /**
+     * Extract bullet points from section content, preserving code blocks
+     */
+    private extractBulletPointsWithCodeBlocks(content: string): string[] {
+        const bulletPoints: string[] = [];
+        
+        // Check if content is empty
+        if (!content.trim()) return bulletPoints;
+        
+        // Split content into lines for processing
+        const lines = content.split('\n');
+        let currentBullet: string | null = null;
+        let inCodeBlock = false;
+        let currentCodeBlock = '';
+        
+        // Process each line
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            // Check for code block markers
+            if (line.startsWith('```')) {
+                inCodeBlock = !inCodeBlock;
+                
+                // Add the code block marker to the current bullet
+                if (currentBullet !== null) {
+                    currentBullet += '\n' + line;
+                    
+                    // If we're closing a code block, add any accumulated code
+                    if (!inCodeBlock && currentCodeBlock) {
+                        currentCodeBlock = '';
+                    }
+                }
+                continue;
+            }
+            
+            // If we're in a code block, add the line to the current bullet
+            if (inCodeBlock) {
+                currentCodeBlock += line + '\n';
+                if (currentBullet !== null) {
+                    currentBullet += '\n' + line;
+                }
+                continue;
+            }
+            
+            // Check for bullet points (numbered or with symbols)
+            const bulletMatch = line.match(/^(\d+\.|[-*•])\s+(.+)$/);
+            
+            if (bulletMatch) {
+                // If we already have a bullet point, add it to the list
+                if (currentBullet !== null) {
+                    bulletPoints.push(currentBullet);
+                }
+                
+                // Start a new bullet point
+                currentBullet = bulletMatch[2];
+            } else if (currentBullet !== null && line) {
+                // Continue the current bullet point
+                currentBullet += '\n' + line;
+            }
+        }
+        
+        // Add the last bullet point if there is one
+        if (currentBullet !== null) {
+            bulletPoints.push(currentBullet);
+        }
+        
+        return bulletPoints;
     }
 
     private getHtmlContent(webview: vscode.Webview): string {

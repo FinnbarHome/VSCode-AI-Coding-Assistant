@@ -171,4 +171,218 @@
     margin-bottom: 16px;
     color: var(--vscode-disabledForeground, #888888);
     font-size: 13px;
+}
+
+/* Code snippet styling */
+.code-snippet {
+    margin: 8px 0;
+    background-color: var(--vscode-editor-background, #1e1e1e) !important; /* Match parent background */
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--vscode-panel-border, #3c3c3c);
+    width: 100%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.code-language {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 11px;
+    padding: 2px 8px;
+    background-color: var(--vscode-panel-background, #252526) !important;
+    color: var(--vscode-descriptionForeground, #9d9d9d) !important;
+    border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.code-snippet pre {
+    margin: 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    background-color: var(--vscode-editor-background, #1e1e1e) !important; /* Match parent background */
+}
+
+.code-snippet code {
+    font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--vscode-foreground, #cccccc) !important; /* Match normal text color */
+    white-space: pre;
+    display: block;
+    tab-size: 2;
+}
+
+/* Ensure code text is visible */
+.code-snippet pre, 
+.code-snippet code,
+.code-snippet * {
+    background-color: var(--vscode-editor-background, #1e1e1e) !important;
+    color: var(--vscode-foreground, #cccccc) !important;
+}
+
+/* Adjust list item spacing when it contains code */
+.vscode-list-item .list-item-text .code-snippet {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+/* Single item styling with code */
+.single-item .list-item-text .code-snippet {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+/* Syntax highlighting for different languages */
+.language-typescript,
+.language-javascript,
+.language-json,
+.language-html,
+.language-css,
+.language-markdown {
+    color: #e6edf3; /* Base text color */
+}
+
+/* Specific language highlights */
+.language-typescript .keyword,
+.language-javascript .keyword {
+    color: #ff7b72; /* Bright red for keywords */
+}
+
+.language-typescript .string,
+.language-javascript .string {
+    color: #a5d6ff; /* Light blue for strings */
+}
+
+.language-typescript .comment,
+.language-javascript .comment {
+    color: #8b949e; /* Gray for comments */
+}
+
+.language-typescript .function,
+.language-javascript .function {
+    color: #d2a8ff; /* Purple for functions */
+}
+
+.language-typescript .number,
+.language-javascript .number {
+    color: #79c0ff; /* Blue for numbers */
+}
+
+.language-typescript .operator,
+.language-javascript .operator {
+    color: #ff7b72; /* Red for operators */
+}
+
+.language-json .string {
+    color: #a5d6ff; /* Light blue for strings */
+}
+
+.language-json .number {
+    color: #79c0ff; /* Blue for numbers */
+}
+
+.language-json .boolean {
+    color: #ff7b72; /* Red for booleans */
+}
+
+.language-json .null {
+    color: #8b949e; /* Gray for null */
+}
+
+.language-html .tag {
+    color: #569cd6;
+}
+
+.language-html .attribute {
+    color: #9cdcfe;
+}
+
+.language-html .string {
+    color: #ce9178;
+}
+
+.language-css .selector {
+    color: #d7ba7d;
+}
+
+.language-css .property {
+    color: #9cdcfe;
+}
+
+.language-css .value {
+    color: #ce9178;
+}
+
+.language-markdown .heading {
+    color: #569cd6;
+}
+
+.language-markdown .link {
+    color: #9cdcfe;
+}
+
+.language-markdown .code {
+    color: #ce9178;
+}
+
+/* Nested sections styling */
+.nested-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.nested-header {
+    font-weight: 600;
+    color: var(--vscode-foreground, #cccccc);
+    margin: 12px 0 4px 0;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+}
+
+.nested-header.level-1 {
+    font-size: 16px;
+}
+
+.nested-header.level-2 {
+    font-size: 15px;
+}
+
+.nested-header.level-3 {
+    font-size: 14px;
+}
+
+.nested-header.level-4 {
+    font-size: 13px;
+}
+
+/* Ensure nested sections don't cause recursive rendering */
+.nested-sections .nested-sections {
+    margin-left: 12px;
+}
+
+/* New styles for nested content */
+.nested-content {
+    margin-left: 8px;
+    padding-left: 8px;
+    border-left: 2px solid var(--vscode-panel-border, #3c3c3c);
+}
+
+.nested-section {
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+/* Special styling for Refactoring Suggestions */
+.vscode-panel[data-type="info"] .nested-content {
+    border-left-color: var(--vscode-editorInfo-foreground, #10b981);
+    opacity: 0.8;
+}
+
+/* Ensure code blocks in nested sections are properly styled */
+.nested-content .code-snippet {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    width: calc(100% - 8px);
 } 
