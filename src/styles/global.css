@@ -130,13 +130,13 @@ body {
 }
 
 .loading-spinner {
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(0, 0, 0, 0.1);
     border-radius: 50%;
-    border-top: 2px solid var(--vscode-progressBar-background, #0e70c0);
-    width: 20px;
-    height: 20px;
+    border-top: 3px solid var(--vscode-progressBar-background, #0e70c0);
+    width: 30px;
+    height: 30px;
     animation: spin 1s linear infinite;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 @keyframes spin {
@@ -201,4 +201,52 @@ body {
     margin: 0;
     padding: 4px 0;
     border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+}
+
+/* Report progress styles */
+.report-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    background-color: var(--vscode-editor-background);
+    border-radius: 4px;
+    margin: 16px 0;
+}
+
+.report-progress.loading {
+    color: var(--vscode-progressBar-background, #0e70c0);
+}
+
+.report-progress.error {
+    color: var(--vscode-errorForeground, #f48771);
+}
+
+.report-progress.success {
+    color: var(--vscode-notificationsInfoIcon-foreground, #10b981);
+}
+
+.progress-content {
+    margin-top: 16px;
+}
+
+.progress-content h3 {
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.progress-content p {
+    font-size: 14px;
+    line-height: 1.4;
+    max-width: 500px;
+    margin: 0 auto;
+    color: var(--vscode-foreground);
+}
+
+.error-icon, .success-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
 }

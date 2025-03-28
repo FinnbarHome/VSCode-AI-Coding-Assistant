@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getAIResponse } from './ai';
+import { getAIResponse, generateReport, convertMarkdownToPdf } from './ai';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -8,18 +8,18 @@ const MAX_RETRIES = 3; // Avoid infinite loops
 // Constants
 const SUPPORTED_EXTENSIONS = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md'];
 const DEFAULT_CATEGORIES = [
-    "Serious Problems",
-    "Warnings",
-    "Refactoring Suggestions",
-    "Coding Conventions",
-    "Performance Optimization",
-    "Security Issues",
-    "Best Practices",
-    "Readability and Maintainability",
-    "Code Smells",
-    "Educational Tips"
-];
-
+            "Serious Problems",
+            "Warnings",
+            "Refactoring Suggestions",
+            "Coding Conventions",
+            "Performance Optimization",
+            "Security Issues",
+            "Best Practices",
+            "Readability and Maintainability",
+            "Code Smells",
+            "Educational Tips"
+        ];
+        
 // Helper functions
 function getShortFileName(filePath: string): string {
     return filePath.split(/[\\/]/).pop() || 'Unknown File';
@@ -30,79 +30,79 @@ function getFileExtension(filePath: string): string {
 }
 
 function getCategoryType(category: string): 'error' | 'warning' | 'info' {
-    if (category === 'Serious Problems') {
-        return 'error';
-    } else if (category === 'Warnings' || category === 'Security Issues') {
-        return 'warning';
+        if (category === 'Serious Problems') {
+            return 'error';
+        } else if (category === 'Warnings' || category === 'Security Issues') {
+            return 'warning';
+        }
+        return 'info';
     }
-    return 'info';
-}
 
 function extractBulletPointsWithCodeBlocks(content: string): string[] {
-    const bulletPoints: string[] = [];
-    
-    // Check if content is empty
-    if (!content.trim()) return bulletPoints;
-    
-    // Split content into lines for processing
-    const lines = content.split('\n');
-    let currentBullet: string | null = null;
-    let inCodeBlock = false;
-    let currentCodeBlock = '';
-    
-    // Process each line
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+        const bulletPoints: string[] = [];
         
-        // Check for code block markers
-        if (line.startsWith('```')) {
-            inCodeBlock = !inCodeBlock;
+        // Check if content is empty
+        if (!content.trim()) return bulletPoints;
+        
+        // Split content into lines for processing
+        const lines = content.split('\n');
+        let currentBullet: string | null = null;
+        let inCodeBlock = false;
+        let currentCodeBlock = '';
+        
+        // Process each line
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
             
-            // Add the code block marker to the current bullet
-            if (currentBullet !== null) {
-                currentBullet += '\n' + line;
+            // Check for code block markers
+            if (line.startsWith('```')) {
+                inCodeBlock = !inCodeBlock;
                 
-                // If we're closing a code block, add any accumulated code
-                if (!inCodeBlock && currentCodeBlock) {
-                    currentCodeBlock = '';
+                // Add the code block marker to the current bullet
+                if (currentBullet !== null) {
+                    currentBullet += '\n' + line;
+                    
+                    // If we're closing a code block, add any accumulated code
+                    if (!inCodeBlock && currentCodeBlock) {
+                        currentCodeBlock = '';
+                    }
                 }
-            }
-            continue;
-        }
-        
-        // If we're in a code block, add the line to the current bullet
-        if (inCodeBlock) {
-            currentCodeBlock += line + '\n';
-            if (currentBullet !== null) {
-                currentBullet += '\n' + line;
-            }
-            continue;
-        }
-        
-        // Check for bullet points (numbered or with symbols)
-        const bulletMatch = line.match(/^(\d+\.|[-*•])\s+(.+)$/);
-        
-        if (bulletMatch) {
-            // If we already have a bullet point, add it to the list
-            if (currentBullet !== null) {
-                bulletPoints.push(currentBullet);
+                continue;
             }
             
-            // Start a new bullet point
-            currentBullet = bulletMatch[2];
-        } else if (currentBullet !== null && line) {
-            // Continue the current bullet point
-            currentBullet += '\n' + line;
+            // If we're in a code block, add the line to the current bullet
+            if (inCodeBlock) {
+                currentCodeBlock += line + '\n';
+                if (currentBullet !== null) {
+                    currentBullet += '\n' + line;
+                }
+                continue;
+            }
+            
+            // Check for bullet points (numbered or with symbols)
+            const bulletMatch = line.match(/^(\d+\.|[-*•])\s+(.+)$/);
+            
+            if (bulletMatch) {
+                // If we already have a bullet point, add it to the list
+                if (currentBullet !== null) {
+                    bulletPoints.push(currentBullet);
+                }
+                
+                // Start a new bullet point
+                currentBullet = bulletMatch[2];
+            } else if (currentBullet !== null && line) {
+                // Continue the current bullet point
+                currentBullet += '\n' + line;
+            }
         }
+        
+        // Add the last bullet point if there is one
+        if (currentBullet !== null) {
+            bulletPoints.push(currentBullet);
+        }
+        
+        return bulletPoints;
     }
-    
-    // Add the last bullet point if there is one
-    if (currentBullet !== null) {
-        bulletPoints.push(currentBullet);
-    }
-    
-    return bulletPoints;
-}
 
 function parseAIResponse(response: string): Record<string, string[]> {
     // Initialize with all required categories
@@ -268,30 +268,30 @@ function isBlankResponse(parsedJson: Record<string, string[]>): boolean {
 }
 
 function getWebviewHtml(context: vscode.ExtensionContext, webview: vscode.Webview): string {
-    const scriptUri = webview.asWebviewUri(
+        const scriptUri = webview.asWebviewUri(
         vscode.Uri.joinPath(context.extensionUri, "out", "webview.js")
-    );
+        );
 
-    return `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>AI Coding Assistant</title>
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline';">
-            <style>
-                body { margin: 0; padding: 0; background: #1e1e1e; color: white; font-family: Arial, sans-serif; }
-                #root { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; }
-            </style>
-        </head>
-        <body>
-            <div id="root"></div>
-            <script src="${scriptUri}" defer></script>
-        </body>
-        </html>
-    `;
-}
+        return `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>AI Coding Assistant</title>
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline';">
+                <style>
+                    body { margin: 0; padding: 0; background: #1e1e1e; color: white; font-family: Arial, sans-serif; }
+                    #root { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; }
+                </style>
+            </head>
+            <body>
+                <div id="root"></div>
+                <script src="${scriptUri}" defer></script>
+            </body>
+            </html>
+        `;
+    }
 
 // Tree item class for feedback categories and items
 class FeedbackItem extends vscode.TreeItem {
@@ -441,6 +441,7 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
 
 class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
+    private readonly supportedExtensions = SUPPORTED_EXTENSIONS;
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -453,8 +454,13 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         webviewView.webview.html = getWebviewHtml(this.context, webviewView.webview);
 
         webviewView.webview.onDidReceiveMessage(async (message) => {
+            console.log("Received message from webview:", message);
+            
             if (message.command === 'getAIAnalysis') {
                 await this.handleAIAnalysis();
+            } else if (message.command === 'generatePDFReport') {
+                console.log("generatePDFReport command received from webview");
+                await this.handlePDFReport();
             }
         });
     }
@@ -500,7 +506,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             }
             
             progress.report({ increment: 50 });
-
+            
             // Convert raw response to JSON and save it
             const jsonFilePath = saveParsedResponse(responseFilePath);
             if (!jsonFilePath) {
@@ -509,7 +515,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             }
             
             progress.report({ increment: 90 });
-
+            
             // Process the JSON response
             await this.processJsonResponse(jsonFilePath, fileName, retryCount);
             
@@ -670,6 +676,159 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     private postMessage(filename: string, response: string) {
         this._view?.webview.postMessage({ command: 'displayFileInfo', filename, response });
     }
+
+    async handlePDFReport() {
+        console.log("handlePDFReport called");
+        
+        // Check view state
+        if (!this._view) {
+            console.error("View is not available");
+            vscode.window.showErrorMessage("Unable to display report progress. Please try again.");
+            return;
+        }
+        
+        // Check if there's an active editor
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            console.log("No active editor found");
+            vscode.window.showErrorMessage('No active editor found.');
+            this.postProgressMessage('error', 'No file selected', 'Please open a file to analyze.');
+            return;
+        }
+
+        const fileName = activeEditor.document.fileName;
+        const extension = getFileExtension(fileName);
+
+        // Check if file extension is supported
+        if (!this.supportedExtensions.includes(extension)) {
+            console.log(`Unsupported file type: ${extension}`);
+            vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
+            this.postProgressMessage('error', `File type (${extension}) not supported`, 'Please open a supported file type.');
+            return;
+        }
+
+        const fileContent = activeEditor.document.getText();
+        const shortFileName = getShortFileName(fileName);
+        console.log(`Processing file: ${shortFileName}`);
+
+        // Show progress indicator with multiple steps
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `Generating report for ${shortFileName}`,
+            cancellable: false
+        }, async (progress) => {
+            // Step 1: Initialize
+            progress.report({ 
+                increment: 0, 
+                message: "Starting report generation..." 
+            });
+            
+            // Update webview with initial progress
+            this.postProgressMessage('loading', 'Initializing', 'Preparing to generate report...');
+            await this.delay(500); // Brief delay for UI update
+            
+            // Step 2: Generate AI content
+            progress.report({ 
+                increment: 10, 
+                message: "Analyzing code with GPT-4o..." 
+            });
+            
+            this.postProgressMessage('loading', 'AI Analysis', 'Analyzing code with GPT-4o...');
+            
+            // Get the markdown response
+            const markdownFilePath = await generateReport(fileContent);
+            
+            if (!markdownFilePath) {
+                vscode.window.showErrorMessage("Error generating AI report content.");
+                this.postProgressMessage('error', 'AI Analysis Failed', 'Could not generate report content.');
+                await this.delay(3000); // Show error for 3 seconds
+                this.postProgressMessage('idle');
+                return;
+            }
+            
+            // Step 3: Convert to PDF
+            progress.report({ 
+                increment: 60, 
+                message: "Converting to PDF format..." 
+            });
+            
+            this.postProgressMessage('loading', 'PDF Conversion', 'Converting markdown to PDF (this may take a moment)...');
+            
+            try {
+                // Convert markdown to PDF
+                console.log(`Attempting to convert ${markdownFilePath} to PDF`);
+                const pdfFilePath = await convertMarkdownToPdf(markdownFilePath);
+                
+                // Step 4: Finalize
+                progress.report({ 
+                    increment: 30, 
+                    message: "Finalizing report..." 
+                });
+                
+                // Check if the file exists and has a .pdf extension (true PDF conversion)
+                const isPdf = pdfFilePath.toLowerCase().endsWith('.pdf') && fs.existsSync(pdfFilePath);
+                
+                if (isPdf) {
+                    // Successfully created PDF - open it
+                    const pdfUri = vscode.Uri.file(pdfFilePath);
+                    await vscode.commands.executeCommand('vscode.open', pdfUri);
+                    
+                    vscode.window.showInformationMessage(`Report for ${shortFileName} generated successfully.`);
+                    this.postProgressMessage(
+                        'success', 
+                        'Report Complete', 
+                        `PDF report generated and opened in a new tab.`
+                    );
+                } else {
+                    // Fallback to markdown file
+                    const mdUri = vscode.Uri.file(pdfFilePath);
+                    await vscode.commands.executeCommand('vscode.open', mdUri);
+                    
+                    vscode.window.showWarningMessage(`PDF conversion failed, but a markdown report was created for ${shortFileName}.`);
+                    this.postProgressMessage(
+                        'success', 
+                        'Report Created (Markdown only)', 
+                        `PDF conversion failed, but a markdown report was created and opened.`
+                    );
+                }
+                
+                // Show message for a few seconds, then return to default view
+                await this.delay(3000);
+                this.postProgressMessage('idle');
+            } catch (error) {
+                console.error("PDF conversion error:", error);
+                vscode.window.showErrorMessage(`Error creating PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                this.postProgressMessage('error', 'PDF Creation Failed', 'Could not convert to PDF format.');
+                await this.delay(3000); // Show error for 3 seconds
+                this.postProgressMessage('idle');
+            }
+        });
+    }
+    
+    /**
+     * Post a progress message to the webview
+     */
+    private postProgressMessage(
+        state: 'loading' | 'error' | 'success' | 'idle',
+        title?: string,
+        message?: string
+    ) {
+        if (!this._view) return;
+        
+        this._view.webview.postMessage({
+            command: 'reportProgress',
+            state,
+            title,
+            message
+        });
+    }
+    
+    /**
+     * Helper function to create a delay
+     */
+    private delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 }
 
 // Function called when the extension is activated
@@ -699,10 +858,16 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register command for PDF report (functionless)
+    // Register command for PDF report
     context.subscriptions.push(
         vscode.commands.registerCommand('aiCodingAssistant.generatePDFReport', async () => {
-            // Functionless command - does nothing
+            console.log("PDF report command triggered");
+            if (!webviewProvider) {
+                console.error("Webview provider not initialized");
+                vscode.window.showErrorMessage("AI Assistant not properly initialized");
+                return;
+            }
+            await webviewProvider.handlePDFReport();
         })
     );
 

@@ -19,6 +19,13 @@ interface MessageHandlerProps {
     setViewMode: React.Dispatch<React.SetStateAction<'single' | 'category' | 'all'>>;
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setLoadingMessage: React.Dispatch<React.SetStateAction<string>>;
+    setReportProgress: React.Dispatch<React.SetStateAction<ReportProgressState | null>>;
+}
+
+interface ReportProgressState {
+    state: 'loading' | 'error' | 'success' | 'idle';
+    title?: string;
+    message?: string;
 }
 
 // Acquire VSCode API
@@ -31,6 +38,32 @@ const LoadingState: React.FC<{ message: string }> = ({ message }) => {
         <div className="loading">
             <div className="loading-spinner"></div>
             <p>{message}</p>
+        </div>
+    );
+};
+
+// Component for report progress
+const ReportProgressState: React.FC<{ progress: ReportProgressState }> = ({ progress }) => {
+    const { state, title, message } = progress;
+    
+    console.log("Rendering progress state:", state, title, message);
+    
+    let icon;
+    if (state === 'loading') {
+        icon = <div className="loading-spinner"></div>;
+    } else if (state === 'error') {
+        icon = <div className="error-icon">❌</div>;
+    } else if (state === 'success') {
+        icon = <div className="success-icon">✅</div>;
+    }
+    
+    return (
+        <div className={`report-progress ${state}`}>
+            {icon}
+            <div className="progress-content">
+                <h3>{title || 'Processing'}</h3>
+                <p>{message || 'Please wait...'}</p>
+            </div>
         </div>
     );
 };
@@ -144,7 +177,8 @@ function setupMessageHandler(props: MessageHandlerProps) {
         setAllItems,
         setViewMode,
         setIsLoading,
-        setLoadingMessage
+        setLoadingMessage,
+        setReportProgress
     } = props;
 
     const messageHandler = (event: MessageEvent) => {
@@ -188,6 +222,18 @@ function setupMessageHandler(props: MessageHandlerProps) {
                 }
                 break;
                 
+            case "reportProgress":
+                if (message.state === 'idle') {
+                    setReportProgress(null);
+                } else {
+                    setReportProgress({
+                        state: message.state,
+                        title: message.title,
+                        message: message.message
+                    });
+                }
+                break;
+                
             default:
                 console.log(`Unknown command: ${message.command}`);
         }
@@ -205,6 +251,7 @@ const VSCodeWebview: React.FC = () => {
     const [viewMode, setViewMode] = React.useState<'single' | 'category' | 'all'>('all');
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = React.useState<string>("Analyzing your code...");
+    const [reportProgress, setReportProgress] = React.useState<ReportProgressState | null>(null);
     
     // Listen for messages from the VSCode extension
     React.useEffect(() => {
@@ -215,7 +262,8 @@ const VSCodeWebview: React.FC = () => {
             setAllItems,
             setViewMode,
             setIsLoading,
-            setLoadingMessage
+            setLoadingMessage,
+            setReportProgress
         });
 
         window.addEventListener("message", handler);
@@ -233,13 +281,29 @@ const VSCodeWebview: React.FC = () => {
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
-    // Empty function for report button - does nothing
+    // Request detailed PDF report generation
     const generateReport = () => {
-        // Functionless button
+        console.log("Sending generatePDFReport command to extension");
+        // Set loading state to show initial feedback to user
+        setReportProgress({
+            state: 'loading',
+            title: 'Initializing',
+            message: 'Starting report generation...'
+        });
+        vscode.postMessage({ 
+            command: "generatePDFReport",
+            timestamp: new Date().toISOString() // Add timestamp to ensure uniqueness
+        });
     };
 
-    // Render content based on view mode
+    // Render content based on view mode and state
     const renderContent = () => {
+        // If there's a report progress, show it
+        if (reportProgress) {
+            return <ReportProgressState progress={reportProgress} />;
+        }
+        
+        // Otherwise, continue with normal rendering
         if (isLoading) {
             return <LoadingState message={loadingMessage} />;
         }

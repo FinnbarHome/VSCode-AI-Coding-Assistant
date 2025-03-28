@@ -2,6 +2,23 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import markdownpdf from 'markdown-pdf';
+import { promisify } from 'util';
+
+// Properly promisify markdown-pdf
+const convertToPdf = (inputPath: string, outputPath: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        markdownpdf()
+            .from(inputPath)
+            .to(outputPath, (err: Error | null) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(outputPath);
+                }
+            });
+    });
+};
 
 // ==============================
 // Configuration and Setup
@@ -119,6 +136,29 @@ function createSystemMessage(): string {
 }
 
 /**
+ * Create the system message for comprehensive reports
+ */
+function createReportSystemMessage(): string {
+    return `You are a senior code reviewer creating a comprehensive PDF-ready code analysis report. 
+Your analysis should be thorough and professional, suitable for formal documentation.
+
+Structure your response with these sections:
+1. **Executive Summary** - Brief overview of code quality and key findings
+2. **Code Architecture** - Analysis of overall structure and design patterns
+3. **Critical Issues** - Security vulnerabilities, bugs, and serious problems
+4. **Code Quality Assessment** - Analysis of style, conventions, and maintainability
+5. **Performance Analysis** - Efficiency concerns and optimization opportunities
+6. **Security Review** - Thorough analysis of security implications
+7. **Maintainability Score** - Rating from 1-10 with justification
+8. **Recommended Refactoring** - Prioritized action items with code examples
+9. **Best Practices Implementation** - Suggestions for improving code quality
+10. **Learning Resources** - Relevant documentation, articles or tutorials
+
+For code examples, use markdown code blocks with appropriate language tags.
+Be specific, actionable, and educational in your feedback.`;
+}
+
+/**
  * Truncate content if it exceeds maximum length
  */
 function truncateContent(content: string, maxLength: number): string {
@@ -145,16 +185,27 @@ function createTimeoutResponse(): string {
 }
 
 /**
+ * Create a fallback response for report timeout scenarios
+ */
+function createReportTimeoutResponse(): string {
+    return "# Report Generation Timed Out\n\nThe report generation process took too long and timed out. This might be due to high server load or complexity of the code. Please try again later with a smaller code sample.";
+}
+
+/**
  * Handle API request timeout
  */
-async function handleTimeout(error: any): Promise<string> {
+async function handleTimeout(error: any, isReport = false): Promise<string> {
     console.error(`AI response failed: ${error.message}`);
     
     if (error.message && error.message.includes('timed out')) {
-        const fallbackContent = createTimeoutResponse();
+        const fallbackContent = isReport 
+            ? createReportTimeoutResponse() 
+            : createTimeoutResponse();
         
         // Generate appropriate file name for the fallback response
-        const fileName = getTimestampedFilename('response-timeout');
+        const prefix = isReport ? 'report-response-timeout' : 'response-timeout';
+        const extension = isReport ? '.md' : '.txt';
+        const fileName = getTimestampedFilename(prefix, extension);
         
         // Save the fallback response
         saveToFile(fallbackContent, fileName);
@@ -169,15 +220,19 @@ async function handleTimeout(error: any): Promise<string> {
 /**
  * Send request to OpenAI API with timeout handling
  */
-async function requestAICompletion(prompt: string): Promise<string> {
-    const model = "gpt-4o-mini";
-    const maxLength = 2048;
+async function requestAICompletion(prompt: string, isReport = false): Promise<string> {
+    // Choose model and max length based on the task
+    const model = isReport ? "gpt-4o" : "gpt-4o-mini";
+    const maxLength = isReport ? 8192 : 2048;
+    const timeoutMs = isReport ? 40000 : 25000;
+    
     const truncatedPrompt = truncateContent(prompt, maxLength);
-    const systemMessage = createSystemMessage();
-    const fullPrompt = `Review the following code:\n\n${truncatedPrompt}`;
+    const systemMessage = isReport ? createReportSystemMessage() : createSystemMessage();
+    const fullPrompt = isReport 
+        ? `Create a comprehensive code review report for the following code:\n\n${truncatedPrompt}`
+        : `Review the following code:\n\n${truncatedPrompt}`;
     
     // Add a timeout for the API call
-    const timeoutMs = 25000;
     const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs/1000} seconds`)), timeoutMs);
     });
@@ -202,12 +257,12 @@ async function requestAICompletion(prompt: string): Promise<string> {
         return completion.choices?.[0]?.message?.content ?? "No response from AI.";
     } catch (error: any) {
         // Handle timeouts and other errors
-        return handleTimeout(error);
+        return handleTimeout(error, isReport);
     }
 }
 
 // ==============================
-// Main Export Function
+// Main Export Functions
 // ==============================
 
 /**
@@ -222,7 +277,7 @@ export async function getAIResponse(prompt: string): Promise<string> {
         }
         
         // Get response from AI
-        const response = await requestAICompletion(prompt);
+        const response = await requestAICompletion(prompt, false);
         
         // If the response is a file path (from timeout handling), return it
         if (response.startsWith(responsesDir)) {
@@ -238,5 +293,103 @@ export async function getAIResponse(prompt: string): Promise<string> {
     } catch (error) {
         console.error(`Error with OpenAI API: ${error}`);
         return "";
+    }
+}
+
+/**
+ * Generate a comprehensive report using GPT-4o and save it
+ */
+export async function generateReport(prompt: string): Promise<string> {
+    try {
+        // If the content is empty, return empty response
+        if (!prompt || prompt.trim() === '') {
+            console.error('Empty prompt provided to AI service for report');
+            return '';
+        }
+        
+        // Get report response from AI
+        const response = await requestAICompletion(prompt, true);
+        
+        // If the response is a file path (from timeout handling), return it
+        if (response.startsWith(responsesDir)) {
+            return response;
+        }
+        
+        // Otherwise, save the response to a report file
+        const fileName = getTimestampedFilename('report-response', '.md');
+        saveToFile(response.trim(), fileName);
+        console.log(`📝 Report response saved to: ${fileName}`);
+        
+        return fileName;
+    } catch (error) {
+        console.error(`Error generating report: ${error}`);
+        return "";
+    }
+}
+
+// ==============================
+// PDF Functions
+// ==============================
+
+/**
+ * Convert a markdown file to PDF
+ */
+export async function convertMarkdownToPdf(markdownPath: string): Promise<string> {
+    try {
+        console.log(`Starting PDF conversion for: ${markdownPath}`);
+        
+        // Create PDF filename from markdown filename
+        const pdfPath = markdownPath.replace('.md', '.pdf');
+        
+        // Add a timeout to prevent hanging
+        const timeoutMs = 30000; // 30 seconds timeout
+        
+        // Create a promise that will resolve when the conversion is complete
+        const conversionPromise = new Promise<string>((resolve, reject) => {
+            console.log(`Creating markdownpdf conversion for ${markdownPath} to ${pdfPath}`);
+            
+            const pdf = markdownpdf({
+                phantomPath: require('phantomjs-prebuilt').path, // Explicitly set phantomjs path
+                timeout: timeoutMs - 5000, // Set internal timeout to be slightly less than our Promise timeout
+            });
+            
+            pdf.from(markdownPath)
+               .to(pdfPath, (err: Error | null) => {
+                   if (err) {
+                       console.error(`PDF conversion error: ${err.message}`);
+                       reject(err);
+                   } else {
+                       console.log(`PDF conversion complete: ${pdfPath}`);
+                       resolve(pdfPath);
+                   }
+               });
+        });
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`PDF conversion timed out after ${timeoutMs/1000} seconds`)), timeoutMs);
+        });
+        
+        // Race the conversion against the timeout
+        const result = await Promise.race([conversionPromise, timeoutPromise]);
+        
+        // If we reached here, the conversion was successful
+        console.log(`✅ PDF report generated: ${result}`);
+        return result as string;
+    } catch (error) {
+        console.error(`Error converting markdown to PDF: ${error}`);
+        
+        // Provide a fallback by copying the markdown file as-is
+        try {
+            const fallbackPath = markdownPath.replace('.md', '-fallback.md');
+            fs.copyFileSync(markdownPath, fallbackPath);
+            console.log(`Created fallback markdown file: ${fallbackPath}`);
+            return fallbackPath;
+        } catch (fallbackError) {
+            console.error(`Error creating fallback: ${fallbackError}`);
+        }
+        
+        // Return the original markdown path if fallback fails
+        return markdownPath;
     }
 }
