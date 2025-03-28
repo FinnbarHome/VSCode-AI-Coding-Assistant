@@ -42,7 +42,7 @@ function extractBulletPointsWithCodeBlocks(content: string): string[] {
         const bulletPoints: string[] = [];
         
         // Check if content is empty
-        if (!content.trim()) return bulletPoints;
+        if (!content.trim()) {return bulletPoints;}
         
         // Split content into lines for processing
         const lines = content.split('\n');
@@ -157,10 +157,10 @@ function parseAIResponse(response: string): Record<string, string[]> {
     // Process each section
     for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
-        if (!section.content.trim()) continue;
+        if (!section.content.trim()) {continue;}
         
         // Skip if category is not recognized
-        if (!parsedData.hasOwnProperty(section.name)) continue;
+        if (!parsedData.hasOwnProperty(section.name)) {continue;}
         
         // Handle "No issues found" case
         if (section.content.toLowerCase().includes('no issues found') || 
@@ -564,7 +564,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
 
     // Show all feedback items from all categories
     showAllFeedbackItems() {
-        if (!this._view) return;
+        if (!this._view) {return;}
         
         const allCategories = Object.keys(this.treeDataProvider.getFeedbackData());
         const allItems: { category: string; content: string; type: 'error' | 'warning' | 'info' }[] = [];
@@ -619,7 +619,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
     
     showItemDetails(item: FeedbackItem) {
-        if (!this._view) return;
+        if (!this._view) {return;}
         
         // If this is a category item (not a specific feedback item)
         if (item.contextValue === 'feedbackCategory') {
@@ -637,7 +637,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     private showCategoryItems(item: FeedbackItem) {
-        if (!this._view) return;
+        if (!this._view) {return;}
         
         const categoryName = item.label.split(' (')[0];
         const items = this.treeDataProvider.getFeedbackItems(categoryName) || [];
@@ -756,8 +756,8 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             
             try {
                 // Convert markdown to PDF
-                console.log(`Attempting to convert ${markdownFilePath} to PDF`);
-                const pdfFilePath = await convertMarkdownToPdf(markdownFilePath);
+                console.log(`Attempting to convert ${markdownFilePath} to HTML`);
+                const convertedFilePath = await convertMarkdownToPdf(markdownFilePath);
                 
                 // Step 4: Finalize
                 progress.report({ 
@@ -765,30 +765,43 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                     message: "Finalizing report..." 
                 });
                 
-                // Check if the file exists and has a .pdf extension (true PDF conversion)
-                const isPdf = pdfFilePath.toLowerCase().endsWith('.pdf') && fs.existsSync(pdfFilePath);
+                // Check if the file exists
+                if (!fs.existsSync(convertedFilePath)) {
+                    throw new Error('Failed to create report file');
+                }
                 
-                if (isPdf) {
-                    // Successfully created PDF - open it
-                    const pdfUri = vscode.Uri.file(pdfFilePath);
-                    await vscode.commands.executeCommand('vscode.open', pdfUri);
-                    
-                    vscode.window.showInformationMessage(`Report for ${shortFileName} generated successfully.`);
+                // Check what type of file was created
+                const isHtml = convertedFilePath.toLowerCase().endsWith('.html');
+                const isPdf = convertedFilePath.toLowerCase().endsWith('.pdf');
+                const isMd = convertedFilePath.toLowerCase().endsWith('.md');
+                
+                // Open the appropriate file
+                const fileUri = vscode.Uri.file(convertedFilePath);
+                await vscode.commands.executeCommand('vscode.open', fileUri);
+                
+                if (isHtml) {
+                    // HTML report created
+                    vscode.window.showInformationMessage(`HTML report for ${shortFileName} generated successfully.`);
+                    this.postProgressMessage(
+                        'success', 
+                        'Report Complete', 
+                        `HTML report generated and opened in a new tab.`
+                    );
+                } else if (isPdf) {
+                    // PDF report created
+                    vscode.window.showInformationMessage(`PDF report for ${shortFileName} generated successfully.`);
                     this.postProgressMessage(
                         'success', 
                         'Report Complete', 
                         `PDF report generated and opened in a new tab.`
                     );
                 } else {
-                    // Fallback to markdown file
-                    const mdUri = vscode.Uri.file(pdfFilePath);
-                    await vscode.commands.executeCommand('vscode.open', mdUri);
-                    
-                    vscode.window.showWarningMessage(`PDF conversion failed, but a markdown report was created for ${shortFileName}.`);
+                    // Markdown fallback
+                    vscode.window.showWarningMessage(`Enhanced report creation used markdown fallback for ${shortFileName}.`);
                     this.postProgressMessage(
                         'success', 
-                        'Report Created (Markdown only)', 
-                        `PDF conversion failed, but a markdown report was created and opened.`
+                        'Report Created (Markdown)', 
+                        `Enhanced report was created in markdown format and opened.`
                     );
                 }
                 
@@ -813,7 +826,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         title?: string,
         message?: string
     ) {
-        if (!this._view) return;
+        if (!this._view) {return;}
         
         this._view.webview.postMessage({
             command: 'reportProgress',

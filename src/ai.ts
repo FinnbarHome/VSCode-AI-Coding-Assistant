@@ -138,24 +138,91 @@ function createSystemMessage(): string {
 /**
  * Create the system message for comprehensive reports
  */
-function createReportSystemMessage(): string {
-    return `You are a senior code reviewer creating a comprehensive PDF-ready code analysis report. 
-Your analysis should be thorough and professional, suitable for formal documentation.
-
-Structure your response with these sections:
-1. **Executive Summary** - Brief overview of code quality and key findings
-2. **Code Architecture** - Analysis of overall structure and design patterns
-3. **Critical Issues** - Security vulnerabilities, bugs, and serious problems
-4. **Code Quality Assessment** - Analysis of style, conventions, and maintainability
-5. **Performance Analysis** - Efficiency concerns and optimization opportunities
-6. **Security Review** - Thorough analysis of security implications
-7. **Maintainability Score** - Rating from 1-10 with justification
-8. **Recommended Refactoring** - Prioritized action items with code examples
-9. **Best Practices Implementation** - Suggestions for improving code quality
-10. **Learning Resources** - Relevant documentation, articles or tutorials
-
-For code examples, use markdown code blocks with appropriate language tags.
-Be specific, actionable, and educational in your feedback.`;
+export function createReportSystemMessage(): string {
+    return `You are a senior code reviewer creating a comprehensive, formal code analysis report.
+    Your analysis should be extremely thorough, professional, and educational - suitable for enterprise documentation.
+    
+    CRITICAL INSTRUCTIONS:
+    1. Make your response as COMPREHENSIVE and DETAILED as possible within model limits
+    2. Provide specific, actionable insights with concrete examples
+    3. Include a numerical score (0-10) for EACH section with clear justification
+    4. Use a consistent structure exactly as outlined below
+    5. Provide lengthy, detailed explanations - not brief summaries
+    6. DO NOT add any introduction, conclusion, or ANY text outside the 10 sections defined below
+    7. DO NOT include phrases like "Here is my analysis" or "This report outlines"
+    8. DO NOT add horizontal lines (---) or any other separators
+    9. Start IMMEDIATELY with section 1 (Executive Summary)
+    10. End IMMEDIATELY after section 10 (Learning Resources)
+    
+    Structure your response with EXACTLY these sections in this order:
+    
+    1. **Executive Summary**
+       * Brief overview of code quality and key findings
+       * Overall quality score: X/10
+       * Top 3 strengths
+       * Top 3 areas for improvement
+    
+    2. **Code Architecture and Design**
+       * Analysis of overall architecture
+       * Component relationship assessment
+       * Design patterns used (or missing)
+       * Architectural score: X/10
+    
+    3. **Critical Issues**
+       * Blocking/high-priority issues
+       * Potential crashes or runtime errors
+       * Architectural flaws
+       * Critical issues score: X/10
+    
+    4. **Code Quality Assessment**
+       * Readability analysis
+       * Consistency evaluation
+       * Code complexity measurement
+       * Formatting and style issues
+       * Quality score: X/10
+    
+    5. **Performance Analysis**
+       * Potential bottlenecks
+       * Optimization opportunities
+       * Resource usage concerns
+       * Performance score: X/10
+    
+    6. **Security Review**
+       * Security vulnerabilities
+       * Data handling concerns
+       * Input validation issues
+       * Security score: X/10
+    
+    7. **Maintainability Assessment**
+       * Code duplication analysis
+       * Documentation quality
+       * Testing coverage/quality
+       * Maintainability score: X/10
+    
+    8. **Recommended Refactoring**
+       * Prioritized refactoring suggestions
+       * Before/after code examples
+       * Expected benefits
+       * Refactoring impact score: X/10
+    
+    9. **Best Practices Implementation**
+       * Language-specific best practices assessment
+       * Industry standard adherence
+       * Framework usage optimization
+       * Best practices score: X/10
+    
+    10. **Learning Resources**
+         * Relevant documentation, articles, or tutorials specific to the issues found
+         * Organized by priority/impact
+         * Explanation of why each resource is valuable
+    
+    For ALL sections:
+    - Provide thorough explanations with specific examples from the code
+    - Break down complex concepts for educational value
+    - Include both positive findings and areas for improvement
+    - Justify all scores with detailed reasoning
+    
+    Remember: DO NOT add ANY text before section 1 or after section 10. Start and end exactly with the defined sections.`;
 }
 
 /**
@@ -223,7 +290,7 @@ async function handleTimeout(error: any, isReport = false): Promise<string> {
 async function requestAICompletion(prompt: string, isReport = false): Promise<string> {
     // Choose model and max length based on the task
     const model = isReport ? "gpt-4o" : "gpt-4o-mini";
-    const maxLength = isReport ? 8192 : 2048;
+    const maxLength = isReport ? 16384 : 8192;
     const timeoutMs = isReport ? 40000 : 25000;
     
     const truncatedPrompt = truncateContent(prompt, maxLength);
@@ -338,58 +405,926 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
     try {
         console.log(`Starting PDF conversion for: ${markdownPath}`);
         
-        // Create PDF filename from markdown filename
-        const pdfPath = markdownPath.replace('.md', '.pdf');
+        // Read the markdown content
+        const markdownContent = fs.readFileSync(markdownPath, 'utf-8');
         
-        // Add a timeout to prevent hanging
-        const timeoutMs = 30000; // 30 seconds timeout
+        // Create HTML filename
+        const htmlPath = markdownPath.replace('.md', '.html');
         
-        // Create a promise that will resolve when the conversion is complete
-        const conversionPromise = new Promise<string>((resolve, reject) => {
-            console.log(`Creating markdownpdf conversion for ${markdownPath} to ${pdfPath}`);
+        // Process markdown content in a specific order to avoid formatting issues
+        
+        // 1. First, identify and convert code blocks to prevent them from interfering with other conversions
+        let codeBlocks: {[key: string]: string} = {};
+        let codeBlockCounter = 0;
+        
+        // Clean up any introductory or concluding text outside the main sections
+        const cleanupExtraText = (content: string): string => {
+            // Extract the content between the first and last heading sections
+            const firstHeadingMatch = content.match(/^#+\s+.*$/m);
+            const lastHeadingMatch = content.match(/^#+\s+.*$(?![\s\S]*^#+\s+)/m);
             
-            const pdf = markdownpdf({
-                phantomPath: require('phantomjs-prebuilt').path, // Explicitly set phantomjs path
-                timeout: timeoutMs - 5000, // Set internal timeout to be slightly less than our Promise timeout
+            if (firstHeadingMatch && lastHeadingMatch) {
+                const firstHeadingIndex = content.indexOf(firstHeadingMatch[0]);
+                const lastHeadingContent = lastHeadingMatch[0];
+                const lastSectionContent = content.substring(content.indexOf(lastHeadingContent));
+                
+                // Find the end of the last section
+                const sections = lastSectionContent.split(/^#+\s+/m);
+                if (sections.length > 0) {
+                    // Return just the content from first heading to the end of the last section
+                    return content.substring(firstHeadingIndex);
+                }
+            }
+            
+            return content; // Return original if we couldn't find the pattern
+        };
+
+        // Apply the cleanup to remove extra text
+        let processedContent = cleanupExtraText(markdownContent);
+        
+        // Replace code blocks with placeholders to preserve them during conversion
+        processedContent = processedContent.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+            const placeholder = `CODE_BLOCK_PLACEHOLDER_${codeBlockCounter}`;
+            
+            const language = lang || 'text';
+            const lines = code.trim().split('\n');
+            let lineNumbers = '';
+            let codeContent = '';
+            
+            // Generate line numbers and code content
+            lines.forEach((line: string, index: number) => {
+                const lineNum = index + 1;
+                lineNumbers += `<span class="line-number">${lineNum}</span>\n`;
+                codeContent += `<span class="code-line">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>\n`;
             });
             
-            pdf.from(markdownPath)
-               .to(pdfPath, (err: Error | null) => {
-                   if (err) {
-                       console.error(`PDF conversion error: ${err.message}`);
-                       reject(err);
-                   } else {
-                       console.log(`PDF conversion complete: ${pdfPath}`);
-                       resolve(pdfPath);
-                   }
-               });
+            const codeBlockHtml = `
+<div class="code-block-wrapper">
+    <div class="code-header">
+        <span class="code-language">${language.toUpperCase() || 'TEXT'}</span>
+        <span class="copy-btn" data-clipboard-target="#code-${Date.now()}-${Math.floor(Math.random() * 1000)}">Copy</span>
+    </div>
+    <pre class="language-${language}"><div class="line-numbers">${lineNumbers}</div><code id="code-${Date.now()}-${Math.floor(Math.random() * 1000)}">${codeContent}</code></pre>
+</div>`;
+            
+            codeBlocks[placeholder] = codeBlockHtml;
+            codeBlockCounter++;
+            return placeholder;
         });
         
-        // Create a timeout promise
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`PDF conversion timed out after ${timeoutMs/1000} seconds`)), timeoutMs);
+        console.log(`Extracted ${codeBlockCounter} code blocks from markdown`);
+        
+        // 2. Convert markdown elements to HTML
+        
+        // Convert headers - promote heading levels (h3->h2) to match TOC expectations
+        processedContent = processedContent
+            .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+            .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gm, '<h2>$1</h2>') // Convert ### to h2 instead of h3
+            .replace(/^#### (.*$)/gm, '<h3>$1</h3>') // Adjust remaining header levels
+            .replace(/^##### (.*$)/gm, '<h4>$1</h4>')
+            .replace(/^###### (.*$)/gm, '<h5>$1</h5>');
+            
+        // Convert bold and italic
+        processedContent = processedContent
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/__(.*?)__/g, '<strong>$1</strong>')
+            .replace(/_(.*?)_/g, '<em>$1</em>');
+        
+        // Convert inline code (do this before lists to avoid conflicts)
+        processedContent = processedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+        // Convert lists with proper grouping
+        let inList = false;
+        let listContent = '';
+        let htmlContentArray = [];
+        
+        processedContent.split('\n').forEach(line => {
+            // Check if this is a list item (starts with * or -)
+            if (line.match(/^\s*[\*\-]\s+(.*)$/)) {
+                // List item found
+                if (!inList) {
+                    inList = true;
+                    listContent = '<ul>\n';
+                }
+                
+                // Extract the content part (removing the bullet)
+                const content = line.replace(/^\s*[\*\-]\s+(.*)$/, '$1');
+                // Don't wrap list content in paragraph tags
+                listContent += `<li>${content}</li>\n`;
+            } else {
+                // Not a list item
+                if (inList) {
+                    // End the current list
+                    listContent += '</ul>';
+                    htmlContentArray.push(listContent);
+                    inList = false;
+                }
+                htmlContentArray.push(line);
+            }
         });
         
-        // Race the conversion against the timeout
-        const result = await Promise.race([conversionPromise, timeoutPromise]);
-        
-        // If we reached here, the conversion was successful
-        console.log(`✅ PDF report generated: ${result}`);
-        return result as string;
-    } catch (error) {
-        console.error(`Error converting markdown to PDF: ${error}`);
-        
-        // Provide a fallback by copying the markdown file as-is
-        try {
-            const fallbackPath = markdownPath.replace('.md', '-fallback.md');
-            fs.copyFileSync(markdownPath, fallbackPath);
-            console.log(`Created fallback markdown file: ${fallbackPath}`);
-            return fallbackPath;
-        } catch (fallbackError) {
-            console.error(`Error creating fallback: ${fallbackError}`);
+        // Close any open list
+        if (inList) {
+            listContent += '</ul>';
+            htmlContentArray.push(listContent);
         }
         
-        // Return the original markdown path if fallback fails
+        processedContent = htmlContentArray.join('\n');
+            
+        // 3. Handle paragraphs - update the regex to exclude code blocks
+        // Look for lines that:
+        // 1. Don't start with <
+        // 2. Don't contain CODE_BLOCK_PLACEHOLDER
+        // 3. Aren't empty
+        // First, process paragraphs in a way that preserves placeholders
+        const paragraphProcessedLines = processedContent.split('\n');
+        const processedLines = [];
+        
+        // Process line by line to better handle code blocks
+        let inCodeBlock = false;
+        for (let i = 0; i < paragraphProcessedLines.length; i++) {
+            const line = paragraphProcessedLines[i];
+            
+            // Check if this line contains a code block placeholder
+            if (line.includes('CODE_BLOCK_PLACEHOLDER')) {
+                processedLines.push(line);
+                continue;
+            }
+            
+            // Skip empty lines
+            if (!line.trim()) {
+                processedLines.push(line);
+                continue;
+            }
+            
+            // Skip lines that already start with HTML
+            if (line.trim().startsWith('<')) {
+                processedLines.push(line);
+                continue;
+            }
+            
+            // Wrap non-HTML, non-placeholder lines in paragraph tags
+            processedLines.push(`<p>${line}</p>`);
+        }
+        
+        processedContent = processedLines.join('\n');
+            
+        // Fix numbered list items outside ordered lists (like "1. Item")
+        processedContent = processedContent.replace(
+            /<p>\s*(\d+)\.\s+(.*?)<\/p>/g,
+            '<p class="numbered-item"><span class="item-number">$1.</span> $2</p>'
+        );
+
+        // 4. Restore code blocks - improved to catch all placeholder variants
+        console.log(`Starting to restore ${Object.keys(codeBlocks).length} code blocks`);
+
+        // Special debug logging to help diagnose issues
+        console.log('Placeholder patterns to look for:');
+        Object.keys(codeBlocks).forEach(placeholder => {
+            console.log(`- ${placeholder}`);
+            
+            // Check if this placeholder appears in the processed content
+            if (processedContent.includes(placeholder)) {
+                console.log(`  Found as plain text`);
+            } else if (processedContent.includes(`<p>${placeholder}</p>`)) {
+                console.log(`  Found wrapped in paragraph tags`);
+            } else if (processedContent.includes(placeholder.replace(/_/g, '<em>_</em>'))) {
+                console.log(`  Found with emphasized underscores`);
+            } else {
+                console.log(`  Not found in standard patterns - searching for variations`);
+            }
+        });
+
+        // First check for specific patterns from nested headers with code blocks
+        const h2BeforeRefactoringRegex = /<h2>.*?Before Refactoring.*?<\/h2>\s*<p>CODE[_<].*?PLACEHOLDER_(\d+).*?<\/p>/g;
+        processedContent = processedContent.replace(h2BeforeRefactoringRegex, (match, placeholderNum) => {
+            const placeholder = `CODE_BLOCK_PLACEHOLDER_${placeholderNum}`;
+            if (codeBlocks[placeholder]) {
+                console.log(`Replaced "Before Refactoring" pattern for placeholder ${placeholderNum}`);
+                return match.replace(/<p>CODE[_<].*?PLACEHOLDER_\d+.*?<\/p>/, codeBlocks[placeholder]);
+            }
+            return match;
+        });
+
+        const h2AfterRefactoringRegex = /<h2>.*?After Refactoring.*?<\/h2>\s*<p>CODE[_<].*?PLACEHOLDER_(\d+).*?<\/p>/g;
+        processedContent = processedContent.replace(h2AfterRefactoringRegex, (match, placeholderNum) => {
+            const placeholder = `CODE_BLOCK_PLACEHOLDER_${placeholderNum}`;
+            if (codeBlocks[placeholder]) {
+                console.log(`Replaced "After Refactoring" pattern for placeholder ${placeholderNum}`);
+                return match.replace(/<p>CODE[_<].*?PLACEHOLDER_\d+.*?<\/p>/, codeBlocks[placeholder]);
+            }
+            return match;
+        });
+
+        // Use a direct pattern matching approach
+        for (let i = 0; i < codeBlockCounter; i++) {
+            const placeholder = `CODE_BLOCK_PLACEHOLDER_${i}`;
+            // Create variations of the pattern we've seen
+            const variations = [
+                placeholder,
+                `<p>${placeholder}</p>`,
+                `<p>  ${placeholder}</p>`,
+                `<p>${placeholder.replace(/_/g, '<em>_</em>')}</p>`,
+                `<p>  ${placeholder.replace(/_/g, '<em>_</em>')}</p>`,
+                // Match CODE<em>BLOCK</em>PLACEHOLDER pattern
+                `<p>CODE<em>BLOCK</em>PLACEHOLDER_${i}</p>`,
+                `CODE<em>BLOCK</em>PLACEHOLDER_${i}`,
+                `<p>CODE_BLOCK<em>PLACEHOLDER</em>_${i}</p>`,
+                `<p>CODE<em>_</em>BLOCK<em>_</em>PLACEHOLDER_${i}</p>`,
+            ];
+            
+            // Try each variation
+            variations.forEach(pattern => {
+                if (processedContent.includes(pattern)) {
+                    console.log(`Found and replacing pattern: ${pattern}`);
+                    processedContent = processedContent.replace(pattern, codeBlocks[placeholder]);
+                }
+            });
+            
+            // Last resort: use a flexible regex to match any form with the same placeholder number
+            const flexRegex = new RegExp(`<p>(?:CODE)?(?:<em>)?[_]?(?:</em>)?(?:BLOCK)?(?:<em>)?[_]?(?:</em>)?PLACEHOLDER_${i}(?:\\s*|<em>.*?</em>|.*?)</p>`, 'g');
+            processedContent = processedContent.replace(flexRegex, codeBlocks[placeholder]);
+        }
+
+        // Then run the standard placeholder replacement
+        Object.keys(codeBlocks).forEach(placeholder => {
+            // ... existing replacement code ...
+        });
+
+        // Add specific styling for numbered items that aren't in lists and improved code blocks
+        const extraStyles = `
+        /* Numbered items outside lists */
+        .numbered-item {
+            position: relative;
+            padding-left: 1.5em;
+            margin-left: 1em;
+        }
+
+        .item-number {
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        /* Additional list styling */
+        ul, ol {
+            padding-left: 2em;
+            margin: 1em 0;
+        }
+
+        ul li, ol li {
+            margin-bottom: 0.5em;
+            padding-left: 0.5em;
+        }
+
+        /* Fix spacing */
+        li p {
+            margin: 0.25em 0;
+        }
+
+        /* Improved code block styling */
+        .code-block-wrapper {
+            margin: 1.5em 0;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            max-height: 500px;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--secondary-color);
+            color: white;
+            padding: 6px 12px;
+            font-size: 0.8em;
+        }
+
+        .code-language {
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            cursor: pointer;
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        pre {
+            margin: 0;
+            overflow: auto;
+            max-height: 450px;
+            display: flex;
+            background-color: #f5f7f9;
+            border-top: none;
+        }
+
+        .line-numbers {
+            padding: 0.5em;
+            text-align: right;
+            width: 2.5em;
+            user-select: none;
+            color: #888;
+            background-color: rgba(0,0,0,0.03);
+            border-right: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .line-number {
+            display: block;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        code {
+            padding: 0.5em;
+            width: 100%;
+            overflow-x: auto;
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+        }
+
+        .code-line {
+            display: block;
+            white-space: pre;
+            line-height: 1.4;
+            font-size: 0.9em;
+        }
+
+        /* Syntax highlighting */
+        .language-javascript .code-line, 
+        .language-typescript .code-line,
+        .language-css .code-line {
+            color: #333;
+        }
+
+        /* CSS-specific highlighting */
+        .language-css .code-line {
+            color: #07a;
+        }
+        `;
+        
+        // Wrap in HTML document with styling
+        const fullHtml = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Code Analysis Report</title>
+            <style>
+                :root {
+                    --primary-color: #0078d7;
+                    --primary-light: #e6f2ff;
+                    --secondary-color: #2c3e50;
+                    --accent-color: #16a085;
+                    --light-gray: #f5f7f9;
+                    --dark-gray: #444;
+                    --border-color: #ddd;
+                    --score-good: #27ae60;
+                    --score-medium: #f39c12;
+                    --score-bad: #e74c3c;
+                }
+                
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                    line-height: 1.6;
+                    color: var(--dark-gray);
+                    max-width: 1000px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background-color: white;
+                }
+                
+                /* Header styling */
+                header {
+                    border-bottom: 2px solid var(--primary-color);
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                
+                h1 {
+                    color: var(--primary-color);
+                    font-size: 2.4em;
+                    margin-bottom: 10px;
+                }
+                
+                h2 {
+                    color: var(--primary-color);
+                    font-size: 2.2em;
+                    margin-top: 2em;
+                    padding-bottom: 15px;
+                    border-bottom: 1px solid var(--border-color);
+                    position: relative;
+                }
+                
+                /* Section numbering */
+                h2:before {
+                    margin-right: 10px;
+                    font-weight: bold;
+                    color: var(--primary-color);
+                }
+                
+                h2[id="executive-summary"]:before { content: "1. "; }
+                h2[id="code-architecture"]:before { content: "2. "; }
+                h2[id="critical-issues"]:before { content: "3. "; }
+                h2[id="code-quality"]:before { content: "4. "; }
+                h2[id="performance-analysis"]:before { content: "5. "; }
+                h2[id="security-review"]:before { content: "6. "; }
+                h2[id="maintainability"]:before { content: "7. "; }
+                h2[id="recommended-refactoring"]:before { content: "8. "; }
+                h2[id="best-practices"]:before { content: "9. "; }
+                h2[id="learning-resources"]:before { content: "10. "; }
+                
+                h3 {
+                    color: var(--secondary-color);
+                    font-size: 1.4em;
+                    margin-top: 1.5em;
+                }
+                
+                h4 {
+                    color: var(--secondary-color);
+                    font-size: 1.2em;
+                }
+                
+                /* Sections */
+                section {
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background-color: white;
+                    border-radius: 6px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                
+                /* Score indicators */
+                .score-container {
+                    display: flex;
+                    align-items: center;
+                    margin: 15px 0;
+                    padding: 10px 15px;
+                    background-color: var(--light-gray);
+                    border-radius: 6px;
+                }
+                
+                .score-label {
+                    font-weight: bold;
+                    margin-right: 15px;
+                }
+                
+                .score {
+                    font-size: 1.2em;
+                    font-weight: bold;
+                    padding: 5px 12px;
+                    border-radius: 16px;
+                    color: white;
+                }
+                
+                .score-good {
+                    background-color: var(--score-good);
+                }
+                
+                .score-medium {
+                    background-color: var(--score-medium);
+                }
+                
+                .score-bad {
+                    background-color: var(--score-bad);
+                }
+                
+                /* Lists */
+                ul, ol {
+                    padding-left: 2em;
+                    margin: 1em 0;
+                }
+                
+                li {
+                    margin-bottom: 8px;
+                }
+                
+                /* Prevent double spacing in lists */
+                li p {
+                    margin: 0.25em 0;
+                }
+
+                ${extraStyles}
+                
+                /* Code blocks */
+                code {
+                    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                    background: var(--light-gray);
+                    border-radius: 3px;
+                    padding: 2px 5px;
+                    font-size: 0.9em;
+                }
+                
+                pre {
+                    background-color: var(--light-gray);
+                    padding: 15px;
+                    overflow: auto;
+                    border-radius: 5px;
+                    border-left: 4px solid var(--primary-color);
+                    margin: 1.5em 0;
+                    position: relative;
+                }
+                
+                pre code {
+                    background: transparent;
+                    padding: 0;
+                    font-size: 0.95em;
+                    line-height: 1.5;
+                    display: flex;
+                }
+                
+                /* Tables */
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin: 1.5em 0;
+                }
+                
+                th, td {
+                    padding: 12px 15px;
+                    text-align: left;
+                    border-bottom: 1px solid var(--border-color);
+                }
+                
+                th {
+                    background-color: var(--primary-light);
+                    color: var(--secondary-color);
+                    font-weight: bold;
+                }
+                
+                tr:nth-child(even) {
+                    background-color: var(--light-gray);
+                }
+                
+                /* Highlight sections with scores */
+                [id^="executive-summary"],
+                [id^="code-architecture"],
+                [id^="critical-issues"],
+                [id^="code-quality"],
+                [id^="performance-analysis"],
+                [id^="security-review"],
+                [id^="maintainability"],
+                [id^="recommended-refactoring"],
+                [id^="best-practices"] {
+                    padding-top: 15px;
+                    position: relative;
+                }
+                
+                /* Other elements */
+                p {
+                    margin: 1em 0;
+                    line-height: 1.8;
+                }
+                
+                a {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                }
+                
+                a:hover {
+                    text-decoration: underline;
+                }
+                
+                strong {
+                    color: var(--secondary-color);
+                }
+                
+                /* Navigation */
+                .toc {
+                    background-color: var(--light-gray);
+                    padding: 20px 25px;
+                    border-radius: 6px;
+                    margin-bottom: 30px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                
+                .toc h3 {
+                    margin-top: 0;
+                    margin-bottom: 15px;
+                    color: var(--primary-color);
+                    font-size: 1.5em;
+                }
+                
+                .toc ul {
+                    padding-left: 0;
+                    list-style-type: none;
+                }
+                
+                .toc li {
+                    margin-bottom: 12px;
+                    position: relative;
+                    padding-left: 28px;
+                }
+                
+                .toc li:before {
+                    content: counter(toc-counter) ".";
+                    counter-increment: toc-counter;
+                    position: absolute;
+                    left: 0;
+                    font-weight: bold;
+                    color: var(--primary-color);
+                }
+                
+                .toc a {
+                    text-decoration: none;
+                    color: var(--primary-color);
+                    font-size: 1.1em;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                }
+                
+                .toc a:hover {
+                    color: var(--accent-color);
+                    text-decoration: none;
+                    padding-left: 3px;
+                }
+                
+                /* Extra styling for language-specific code blocks */
+                .language-typescript,
+                .language-javascript,
+                .language-python,
+                .language-java,
+                .language-cpp,
+                .language-csharp {
+                    color: #333;
+                }
+                
+                /* Responsive styling */
+                @media (max-width: 768px) {
+                    body {
+                        padding: 15px;
+                    }
+                    
+                    h1 {
+                        font-size: 2em;
+                    }
+                    
+                    h2 {
+                        font-size: 1.5em;
+                    }
+                    
+                    section {
+                        padding: 15px;
+                    }
+                }
+                
+                .code-block-wrapper {
+                    margin: 2em 0;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                
+                .code-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    background: var(--secondary-color);
+                    color: white;
+                    padding: 8px 15px;
+                    font-size: 0.85em;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                }
+                
+                .code-language {
+                    text-transform: uppercase;
+                    font-weight: bold;
+                    letter-spacing: 0.5px;
+                }
+                
+                .copy-btn {
+                    cursor: pointer;
+                    background: rgba(255,255,255,0.1);
+                    padding: 3px 8px;
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                }
+                
+                .copy-btn:hover {
+                    background: rgba(255,255,255,0.2);
+                }
+                
+                .line-numbers {
+                    user-select: none;
+                    text-align: right;
+                    padding-right: 15px;
+                    color: #858585;
+                    background-color: rgba(0,0,0,0.05);
+                    border-right: 1px solid rgba(0,0,0,0.1);
+                    min-width: 2.5em;
+                }
+                
+                .line-number {
+                    display: block;
+                    line-height: 1.5;
+                    font-size: 0.95em;
+                }
+                
+                .code-line {
+                    display: block;
+                    line-height: 1.5;
+                    padding-left: 15px;
+                }
+                
+                /* Syntax highlighting for common languages */
+                .language-javascript .code-line,
+                .language-typescript .code-line,
+                .language-js .code-line,
+                .language-ts .code-line {
+                    color: #333;
+                }
+                
+                /* Highlight specific syntax elements */
+                .language-javascript .code-line,
+                .language-typescript .code-line,
+                .language-js .code-line,
+                .language-ts .code-line {
+                    /* Keywords */
+                    color: #07a;
+                }
+            </style>
+        </head>
+        <body>
+            <header>
+                <h1>Code Analysis Report</h1>
+                <p id="report-date">Generated on ${new Date().toLocaleString()}</p>
+            </header>
+            
+            <div class="toc">
+                <h3>Table of Contents</h3>
+                <ul style="counter-reset: toc-counter;">
+                    <li><a href="#executive-summary">Executive Summary</a></li>
+                    <li><a href="#code-architecture">Code Architecture and Design</a></li>
+                    <li><a href="#critical-issues">Critical Issues</a></li>
+                    <li><a href="#code-quality">Code Quality Assessment</a></li>
+                    <li><a href="#performance-analysis">Performance Analysis</a></li>
+                    <li><a href="#security-review">Security Review</a></li>
+                    <li><a href="#maintainability">Maintainability Assessment</a></li>
+                    <li><a href="#recommended-refactoring">Recommended Refactoring</a></li>
+                    <li><a href="#best-practices">Best Practices Implementation</a></li>
+                    <li><a href="#learning-resources">Learning Resources</a></li>
+                </ul>
+            </div>
+            
+            <main>
+                ${processedContent}
+            </main>
+            
+            <script>
+                // Add IDs to all section headings for navigation
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Find score elements and style them
+                    const content = document.querySelector('main');
+                    
+                    // Process all h2 elements (main sections)
+                    const headings = content.querySelectorAll('h2');
+                    headings.forEach(heading => {
+                        // Create slug from heading text
+                        const text = heading.innerText.toLowerCase();
+                        let id = '';
+                        
+                        // Remove numbering if present in heading text (e.g., "1. Executive Summary")
+                        const cleanText = text.replace(/^\d+\.\s+/, '');
+                        
+                        if (cleanText.includes('executive summary')) id = 'executive-summary';
+                        else if (cleanText.includes('architecture')) id = 'code-architecture';
+                        else if (cleanText.includes('critical issues')) id = 'critical-issues';
+                        else if (cleanText.includes('code quality')) id = 'code-quality';
+                        else if (cleanText.includes('performance')) id = 'performance-analysis';
+                        else if (cleanText.includes('security')) id = 'security-review';
+                        else if (cleanText.includes('maintainability')) id = 'maintainability';
+                        else if (cleanText.includes('refactoring')) id = 'recommended-refactoring';
+                        else if (cleanText.includes('best practices')) id = 'best-practices';
+                        else if (cleanText.includes('learning')) id = 'learning-resources';
+                        
+                        if (id) {
+                            heading.id = id;
+                            
+                            // Keep the numbering in the heading but add the proper ID
+                            // This preserves the "1. Executive Summary" format in the heading
+                        }
+                        
+                        // Find score indicators (numeric X/10)
+                        const scoreRegex = /score:\s*(\d+)\/10/i;
+                        let scoreValue = null;
+                        
+                        // Check the heading text itself for a score
+                        let headingMatch = heading.innerText.match(scoreRegex);
+                        if (headingMatch) {
+                            scoreValue = parseInt(headingMatch[1]);
+                        } else if (heading.nextElementSibling) {
+                            // Otherwise check nearby elements
+                            let nextElement = heading.nextElementSibling;
+                            const searchLimit = 5; // Look at the next few elements
+                            
+                            for (let i = 0; i < searchLimit; i++) {
+                                if (!nextElement) break;
+                                
+                                const textContent = nextElement.textContent.toLowerCase();
+                                const match = textContent.match(scoreRegex);
+                                
+                                if (match) {
+                                    scoreValue = parseInt(match[1]);
+                                    break;
+                                }
+                                
+                                nextElement = nextElement.nextElementSibling;
+                            }
+                        }
+                        
+                        // Create score display if found
+                        if (scoreValue !== null && id !== 'learning-resources') {
+                            const scoreContainer = document.createElement('div');
+                            scoreContainer.className = 'score-container';
+                            
+                            const scoreLabel = document.createElement('div');
+                            scoreLabel.className = 'score-label';
+                            scoreLabel.textContent = 'Section Score:';
+                            
+                            const score = document.createElement('div');
+                            score.className = 'score';
+                            
+                            // Add color class based on score
+                            if (scoreValue >= 8) {
+                                score.classList.add('score-good');
+                            } else if (scoreValue >= 5) {
+                                score.classList.add('score-medium');
+                            } else {
+                                score.classList.add('score-bad');
+                            }
+                            
+                            score.textContent = scoreValue + '/10';
+                            
+                            scoreContainer.appendChild(scoreLabel);
+                            scoreContainer.appendChild(score);
+                            
+                            // Insert after heading
+                            heading.insertAdjacentElement('afterend', scoreContainer);
+                        }
+                    });
+                    
+                    // Handle copy buttons for code blocks
+                    document.querySelectorAll('.copy-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const targetId = this.getAttribute('data-clipboard-target').substring(1);
+                            const codeElement = document.getElementById(targetId);
+                            
+                            if (codeElement) {
+                                // Get text content without line numbers
+                                let text = '';
+                                codeElement.querySelectorAll('.code-line').forEach(line => {
+                                    text += line.textContent + "\\n";
+                                });
+                                
+                                // Create a temporary textarea element
+                                const textarea = document.createElement('textarea');
+                                textarea.value = text;
+                                textarea.setAttribute('readonly', '');
+                                textarea.style.position = 'absolute';
+                                textarea.style.left = '-9999px';
+                                document.body.appendChild(textarea);
+                                
+                                // Select and copy
+                                textarea.select();
+                                document.execCommand('copy');
+                                
+                                // Remove the textarea
+                                document.body.removeChild(textarea);
+                                
+                                // Update button text temporarily
+                                const originalText = this.textContent;
+                                this.textContent = 'Copied!';
+                                setTimeout(() => {
+                                    this.textContent = originalText;
+                                }, 2000);
+                            }
+                        });
+                    });
+                });
+            </script>
+        </body>
+        </html>
+        `;
+        
+        // Write the HTML file
+        fs.writeFileSync(htmlPath, fullHtml, 'utf-8');
+        console.log(`HTML file created: ${htmlPath}`);
+        
+        return htmlPath;
+        
+    } catch (error) {
+        console.error(`Error converting markdown to HTML: ${error}`);
         return markdownPath;
     }
 }
