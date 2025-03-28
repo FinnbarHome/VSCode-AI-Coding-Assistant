@@ -4,17 +4,199 @@ import Header from "./components/Header";
 import FeedbackDetail from "./components/FeedbackDetail";
 import "./styles/global.css"; 
 
-// Feedback item type
+// Types
 interface FeedbackItemType {
     category: string;
     content: string;
     type: 'error' | 'warning' | 'info';
 }
 
+interface MessageHandlerProps {
+    setFilename: React.Dispatch<React.SetStateAction<string>>;
+    setSelectedItem: React.Dispatch<React.SetStateAction<FeedbackItemType | null>>;
+    setCategoryItems: React.Dispatch<React.SetStateAction<FeedbackItemType[]>>;
+    setAllItems: React.Dispatch<React.SetStateAction<FeedbackItemType[]>>;
+    setViewMode: React.Dispatch<React.SetStateAction<'single' | 'category' | 'all'>>;
+    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+    setLoadingMessage: React.Dispatch<React.SetStateAction<string>>;
+}
+
 // Acquire VSCode API
 declare const acquireVsCodeApi: () => any;
 const vscode = acquireVsCodeApi();
 
+// Component for loading state
+const LoadingState: React.FC<{ message: string }> = ({ message }) => {
+    return (
+        <div className="loading">
+            <div className="loading-spinner"></div>
+            <p>{message}</p>
+        </div>
+    );
+};
+
+// Component for empty state
+const EmptyState: React.FC<{ onAnalyzeClick: () => void, onReportClick: () => void }> = ({
+    onAnalyzeClick,
+    onReportClick
+}) => {
+    return (
+        <div className="empty-state">
+            <p>Select an item from the Feedback panel to view details</p>
+            <div className="empty-state-buttons">
+                <button className="vscode-button" onClick={onAnalyzeClick}>
+                    Analyze Current File
+                </button>
+                <button className="vscode-button report-button" onClick={onReportClick}>
+                    Generate Comprehensive Report
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// Component for all feedback items
+const AllFeedbackItems: React.FC<{ 
+    items: FeedbackItemType[],
+    onReportClick: () => void
+}> = ({ items, onReportClick }) => {
+    // Group items by category
+    const groupedItems: Record<string, FeedbackItemType[]> = {};
+    
+    items.forEach(item => {
+        if (!groupedItems[item.category]) {
+            groupedItems[item.category] = [];
+        }
+        groupedItems[item.category].push(item);
+    });
+
+    // Sort categories in a specific order
+    const categoryOrder = [
+        "Serious Problems",
+        "Warnings",
+        "Refactoring Suggestions",
+        "Coding Conventions",
+        "Performance Optimization",
+        "Security Issues",
+        "Best Practices",
+        "Readability and Maintainability",
+        "Code Smells",
+        "Educational Tips"
+    ];
+    
+    const sortedCategories = Object.keys(groupedItems).sort((a, b) => {
+        const indexA = categoryOrder.indexOf(a);
+        const indexB = categoryOrder.indexOf(b);
+        return indexA - indexB;
+    });
+
+    return (
+        <div className="feedback-items-container">
+            <div className="action-bar">
+                <button className="vscode-button report-button" onClick={onReportClick}>
+                    Generate Comprehensive Report
+                </button>
+            </div>
+            {sortedCategories.map(category => (
+                <div key={category} className="category-section">
+                    <h3 className="category-title">{category}</h3>
+                    {groupedItems[category].map((item, index) => (
+                        <FeedbackDetail 
+                            key={`${category}-${index}`}
+                            category={item.category} 
+                            content={item.content} 
+                            type={item.type} 
+                            showHeader={false}
+                        />
+                    ))}
+                </div>
+            ))}
+        </div>
+    );
+};
+
+// Component for category items
+const CategoryFeedbackItems: React.FC<{ items: FeedbackItemType[] }> = ({ items }) => {
+    if (items.length === 0) return null;
+    
+    return (
+        <div className="feedback-items-container">
+            <h3 className="category-title">{items[0].category}</h3>
+            {items.map((item, index) => (
+                <FeedbackDetail 
+                    key={index}
+                    category={item.category} 
+                    content={item.content} 
+                    type={item.type} 
+                    showHeader={false}
+                />
+            ))}
+        </div>
+    );
+};
+
+// Set up message handler for VSCode extension communication
+function setupMessageHandler(props: MessageHandlerProps) {
+    const {
+        setFilename,
+        setSelectedItem,
+        setCategoryItems,
+        setAllItems,
+        setViewMode,
+        setIsLoading,
+        setLoadingMessage
+    } = props;
+
+    const messageHandler = (event: MessageEvent) => {
+        const message = event.data;
+        console.log("Received message from extension:", message);
+        
+        switch(message.command) {
+            case "displayFileInfo":
+                setFilename(message.filename);
+                setIsLoading(false);
+                break;
+                
+            case "showItemDetails":
+                setSelectedItem({
+                    category: message.category,
+                    content: message.content,
+                    type: message.type
+                });
+                setCategoryItems([]);
+                setViewMode('single');
+                break;
+                
+            case "showCategoryItems":
+                setCategoryItems(message.items);
+                setSelectedItem(null);
+                setViewMode('category');
+                break;
+                
+            case "showAllFeedbackItems":
+                setAllItems(message.items);
+                setSelectedItem(null);
+                setCategoryItems([]);
+                setViewMode('all');
+                setFilename(message.filename);
+                break;
+                
+            case "setLoading":
+                setIsLoading(message.isLoading);
+                if (message.message) {
+                    setLoadingMessage(message.message);
+                }
+                break;
+                
+            default:
+                console.log(`Unknown command: ${message.command}`);
+        }
+    };
+
+    return messageHandler;
+}
+
+// Main webview component
 const VSCodeWebview: React.FC = () => {
     const [filename, setFilename] = React.useState<string>("None");
     const [selectedItem, setSelectedItem] = React.useState<FeedbackItemType | null>(null);
@@ -26,41 +208,18 @@ const VSCodeWebview: React.FC = () => {
     
     // Listen for messages from the VSCode extension
     React.useEffect(() => {
-        const messageHandler = (event: MessageEvent) => {
-            const message = event.data;
-            console.log("Received message from extension:", message);
-            
-            if (message.command === "displayFileInfo") {
-                setFilename(message.filename);
-                setIsLoading(false);
-            } else if (message.command === "showItemDetails") {
-                setSelectedItem({
-                    category: message.category,
-                    content: message.content,
-                    type: message.type
-                });
-                setCategoryItems([]);
-                setViewMode('single');
-            } else if (message.command === "showCategoryItems") {
-                setCategoryItems(message.items);
-                setSelectedItem(null);
-                setViewMode('category');
-            } else if (message.command === "showAllFeedbackItems") {
-                setAllItems(message.items);
-                setSelectedItem(null);
-                setCategoryItems([]);
-                setViewMode('all');
-                setFilename(message.filename);
-            } else if (message.command === "setLoading") {
-                setIsLoading(message.isLoading);
-                if (message.message) {
-                    setLoadingMessage(message.message);
-                }
-            }
-        };
+        const handler = setupMessageHandler({
+            setFilename,
+            setSelectedItem,
+            setCategoryItems,
+            setAllItems,
+            setViewMode,
+            setIsLoading,
+            setLoadingMessage
+        });
 
-        window.addEventListener("message", messageHandler);
-        return () => window.removeEventListener("message", messageHandler);
+        window.addEventListener("message", handler);
+        return () => window.removeEventListener("message", handler);
     }, []);
 
     // Request AI analysis from VSCode extension
@@ -82,12 +241,7 @@ const VSCodeWebview: React.FC = () => {
     // Render content based on view mode
     const renderContent = () => {
         if (isLoading) {
-            return (
-                <div className="loading">
-                    <div className="loading-spinner"></div>
-                    <p>{loadingMessage}</p>
-                </div>
-            );
+            return <LoadingState message={loadingMessage} />;
         }
 
         if (viewMode === 'single' && selectedItem) {
@@ -101,90 +255,18 @@ const VSCodeWebview: React.FC = () => {
         }
 
         if (viewMode === 'category' && categoryItems.length > 0) {
-            return (
-                <div className="feedback-items-container">
-                    <h3 className="category-title">{categoryItems[0].category}</h3>
-                    {categoryItems.map((item, index) => (
-                        <FeedbackDetail 
-                            key={index}
-                            category={item.category} 
-                            content={item.content} 
-                            type={item.type} 
-                            showHeader={false}
-                        />
-                    ))}
-                </div>
-            );
+            return <CategoryFeedbackItems items={categoryItems} />;
         }
 
         if (viewMode === 'all' && allItems.length > 0) {
-            // Group items by category
-            const groupedItems: Record<string, FeedbackItemType[]> = {};
-            
-            allItems.forEach(item => {
-                if (!groupedItems[item.category]) {
-                    groupedItems[item.category] = [];
-                }
-                groupedItems[item.category].push(item);
-            });
-
-            // Sort categories in a specific order
-            const categoryOrder = [
-                "Serious Problems",
-                "Warnings",
-                "Refactoring Suggestions",
-                "Coding Conventions",
-                "Performance Optimization",
-                "Security Issues",
-                "Best Practices",
-                "Readability and Maintainability",
-                "Code Smells",
-                "Educational Tips"
-            ];
-            
-            const sortedCategories = Object.keys(groupedItems).sort((a, b) => {
-                const indexA = categoryOrder.indexOf(a);
-                const indexB = categoryOrder.indexOf(b);
-                return indexA - indexB;
-            });
-
-            return (
-                <div className="feedback-items-container">
-                    <div className="action-bar">
-                        <button className="vscode-button report-button" onClick={generateReport}>
-                            Generate Comprehensive Report
-                        </button>
-                    </div>
-                    {sortedCategories.map(category => (
-                        <div key={category} className="category-section">
-                            <h3 className="category-title">{category}</h3>
-                            {groupedItems[category].map((item, index) => (
-                                <FeedbackDetail 
-                                    key={`${category}-${index}`}
-                                    category={item.category} 
-                                    content={item.content} 
-                                    type={item.type} 
-                                    showHeader={false}
-                                />
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            );
+            return <AllFeedbackItems items={allItems} onReportClick={generateReport} />;
         }
 
         return (
-            <div className="empty-state">
-                <p>Select an item from the Feedback panel to view details</p>
-                <div className="empty-state-buttons">
-                    <button className="vscode-button" onClick={sendRequest}>
-                        Analyze Current File
-                    </button>
-                    <button className="vscode-button report-button" onClick={generateReport}>
-                        Generate Comprehensive Report
-                    </button>
-                </div>
-            </div>
+            <EmptyState 
+                onAnalyzeClick={sendRequest}
+                onReportClick={generateReport}
+            />
         );
     };
 
