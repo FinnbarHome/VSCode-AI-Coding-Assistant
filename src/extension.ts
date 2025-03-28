@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register command to generate PDF report
     context.subscriptions.push(
         vscode.commands.registerCommand('aiCodingAssistant.generatePDFReport', async () => {
-            await webviewProvider.handlePDFReport();
+            // Functionless command - does nothing
         })
     );
 
@@ -745,80 +745,5 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             </body>
             </html>
         `;
-    }
-
-    async handlePDFReport() {
-        const activeEditor = vscode.window.activeTextEditor;
-        if (!activeEditor) {
-            vscode.window.showErrorMessage('No active editor found.');
-            this.postMessage('No file selected', 'Please open a file to analyze.');
-            return;
-        }
-
-        const fileName = activeEditor.document.fileName;
-        const extension = this.getFileExtension(fileName);
-
-        if (!this.supportedExtensions.includes(extension)) {
-            vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
-            this.postMessage(this.getShortFileName(fileName), `File type (${extension}) is not supported for detailed reports.`);
-            return;
-        }
-
-        const fileContent = activeEditor.document.getText();
-
-        // Show progress indicator
-        vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "Generating comprehensive report...",
-            cancellable: false
-        }, async (progress) => {
-            progress.report({ increment: 0 });
-            
-            // Post update to webview
-            if (this._view) {
-                this._view.webview.postMessage({ 
-                    command: 'setLoading', 
-                    isLoading: true,
-                    message: "Generating comprehensive report with GPT-4o... This may take a moment."
-                });
-            }
-            
-            // Get the file path where the response is saved
-            const reportFilePath = await getAIResponse(fileContent, true);
-            
-            progress.report({ increment: 50 });
-            
-            if (!reportFilePath) {
-                vscode.window.showErrorMessage("Error generating detailed report.");
-                if (this._view) {
-                    this._view.webview.postMessage({ command: 'setLoading', isLoading: false });
-                }
-                return;
-            }
-            
-            progress.report({ increment: 90 });
-            
-            // Open the report file
-            const reportUri = vscode.Uri.file(reportFilePath);
-            await vscode.commands.executeCommand('vscode.open', reportUri);
-            
-            // Update UI to indicate completion
-            if (this._view) {
-                this._view.webview.postMessage({ 
-                    command: 'setLoading', 
-                    isLoading: false,
-                    message: `Report generated for ${this.getShortFileName(fileName)}`
-                });
-                
-                this._view.webview.postMessage({
-                    command: 'reportGenerated',
-                    filePath: reportFilePath
-                });
-            }
-            
-            progress.report({ increment: 100 });
-            
-            vscode.window.showInformationMessage(`Detailed report generated: ${path.basename(reportFilePath)}`);
-        });
     }
 }

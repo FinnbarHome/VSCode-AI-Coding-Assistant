@@ -23,8 +23,7 @@ const VSCodeWebview: React.FC = () => {
     const [viewMode, setViewMode] = React.useState<'single' | 'category' | 'all'>('all');
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = React.useState<string>("Analyzing your code...");
-    const [reportPath, setReportPath] = React.useState<string | null>(null);
-
+    
     // Listen for messages from the VSCode extension
     React.useEffect(() => {
         const messageHandler = (event: MessageEvent) => {
@@ -57,8 +56,6 @@ const VSCodeWebview: React.FC = () => {
                 if (message.message) {
                     setLoadingMessage(message.message);
                 }
-            } else if (message.command === "reportGenerated") {
-                setReportPath(message.filePath);
             }
         };
 
@@ -77,12 +74,9 @@ const VSCodeWebview: React.FC = () => {
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
-    // Request detailed PDF report generation
+    // Empty function for report button - does nothing
     const generateReport = () => {
-        console.log("Requesting detailed report generation");
-        setIsLoading(true);
-        setLoadingMessage("Generating comprehensive report with GPT-4o... This may take a moment.");
-        vscode.postMessage({ command: "generatePDFReport" });
+        // Functionless button
     };
 
     // Render content based on view mode
@@ -190,11 +184,6 @@ const VSCodeWebview: React.FC = () => {
                         Generate Comprehensive Report
                     </button>
                 </div>
-                {reportPath && (
-                    <p className="report-info">
-                        A detailed report has been generated and opened in a new tab.
-                    </p>
-                )}
             </div>
         );
     };
