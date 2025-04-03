@@ -155,14 +155,23 @@ export function createReportSystemMessage(): string {
     10. Start IMMEDIATELY with section 1 (Executive Summary)
     11. End IMMEDIATELY after section 10 (Learning Resources)
     
-    FORMAT ALL CODE EXAMPLES CONSISTENTLY:
+    LIST FORMATTING REQUIREMENTS:
+    - ONLY use bullet points (lines starting with * or -) for actual list items
+    - Main points within each section should be regular paragraphs, NOT bullet points
+    - Use bullet lists only for enumerated findings, benefits, or examples
+    - Within each section, include up to 3-4 bullet points maximum for key items
+    - DO NOT make every line a bullet point
+    
+    CODE EXAMPLES:
     - Always include language identifier in code blocks: \`\`\`javascript, \`\`\`typescript, etc.
     - Use actual code for examples, not pseudocode
     - Make sure "Before" and "After" code examples have the exact same indentation style
     - Keep code examples concise (5-15 lines) and focused on the specific issue
+    - ALWAYS use SEPARATE code blocks for "Before" and "After" examples, never combine them
+    - Label code examples with separate headings: "### Before Example" and "### After Example"
     
     CONTENT REQUIREMENTS:
-    - For ALL sections, provide thorough explanations with specific examples from the code
+    - Provide thorough explanations in paragraph form for each section
     - Break down complex concepts for educational value
     - Include both positive findings and areas for improvement
     - Justify all scores with detailed reasoning
@@ -170,64 +179,94 @@ export function createReportSystemMessage(): string {
     EXACTLY FOLLOW THIS REPORT STRUCTURE:
     
     ## Executive Summary
-    * Brief overview of code quality and key findings
-    * Overall quality score: X/10
-    * Top 3 strengths
-    * Top 3 areas for improvement
+    A paragraph overview of code quality and key findings.
+    
+    Overall quality score: X/10
+    
+    * Top strength 1
+    * Top strength 2
+    * Top strength 3
+    
+    * Area for improvement 1
+    * Area for improvement 2
+    * Area for improvement 3
     
     ## Code Architecture and Design
-    * Analysis of overall architecture
-    * Component relationship assessment
-    * Design patterns used (or missing)
-    * Architectural score: X/10
+    A paragraph analyzing overall architecture.
+    
+    A paragraph on component relationships.
+    
+    Design patterns used or missing, with explanation.
+    
+    Architectural score: X/10
     
     ## Critical Issues
-    * Blocking/high-priority issues
-    * Potential crashes or runtime errors
-    * Architectural flaws
-    * Critical issues score: X/10
+    A paragraph discussing high-priority issues.
+    
+    * Critical issue 1
+    * Critical issue 2
+    * Critical issue 3
+    
+    Critical issues score: X/10
     
     ## Code Quality Assessment
-    * Readability analysis
-    * Consistency evaluation
-    * Code complexity measurement
-    * Formatting and style issues
-    * Quality score: X/10
+    A paragraph on code readability and consistency.
+    
+    A paragraph on complexity and formatting issues.
+    
+    Quality score: X/10
     
     ## Performance Analysis
-    * Potential bottlenecks
-    * Optimization opportunities
-    * Resource usage concerns
-    * Performance score: X/10
+    A paragraph describing potential bottlenecks and optimization opportunities.
+    
+    Resource usage concerns.
+    
+    Performance score: X/10
     
     ## Security Review
-    * Security vulnerabilities
-    * Data handling concerns
-    * Input validation issues
-    * Security score: X/10
+    A paragraph covering security vulnerabilities.
+    
+    Data handling and input validation issues.
+    
+    Security score: X/10
     
     ## Maintainability Assessment
-    * Code duplication analysis
-    * Documentation quality
-    * Testing coverage/quality
-    * Maintainability score: X/10
+    A paragraph on code duplication and documentation quality.
+    
+    Testing coverage/quality.
+    
+    Maintainability score: X/10
     
     ## Recommended Refactoring
-    * Prioritized refactoring suggestions
-    * Before/after code examples (use consistent formatting)
-    * Expected benefits
-    * Refactoring impact score: X/10
+    A paragraph prioritizing refactoring suggestions.
+    
+    ### Before Example
+    \`\`\`language
+    // Before code
+    \`\`\`
+    
+    ### After Example
+    \`\`\`language
+    // After code
+    \`\`\`
+    
+    Expected benefits of refactoring.
+    
+    Refactoring impact score: X/10
     
     ## Best Practices Implementation
-    * Language-specific best practices assessment
-    * Industry standard adherence
-    * Framework usage optimization
-    * Best practices score: X/10
+    A paragraph discussing language-specific best practices.
+    
+    Industry standard adherence and framework usage optimization.
+    
+    Best practices score: X/10
     
     ## Learning Resources
-    * Relevant documentation, articles, or tutorials specific to the issues found
-    * Organized by priority/impact
-    * Explanation of why each resource is valuable
+    A paragraph introducing the resources.
+    
+    * Resource 1: [Description and why it's valuable]
+    * Resource 2: [Description and why it's valuable]
+    * Resource 3: [Description and why it's valuable]
     
     Remember: DO NOT add ANY text before section 1 or after section 10. Start and end exactly with the defined sections.
     DO NOT add stars, asterisks, or bullet points to the section headers themselves. Format them EXACTLY as "## Section Name".`;
@@ -509,7 +548,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
         let htmlContentArray = [];
         
         processedContent.split('\n').forEach(line => {
-            // Check if this is a list item (starts with * or -)
+            // Check if this is an actual list item (starts with * or -)
             if (line.match(/^\s*[\*\-]\s+(.*)$/)) {
                 // List item found
                 if (!inList) {
