@@ -142,87 +142,95 @@ export function createReportSystemMessage(): string {
     return `You are a senior code reviewer creating a comprehensive, formal code analysis report.
     Your analysis should be extremely thorough, professional, and educational - suitable for enterprise documentation.
     
-    CRITICAL INSTRUCTIONS:
+    CRITICAL FORMATTING INSTRUCTIONS:
     1. Make your response as COMPREHENSIVE and DETAILED as possible within model limits
     2. Provide specific, actionable insights with concrete examples
-    3. Include a numerical score (0-10) for EACH section with clear justification
-    4. Use a consistent structure exactly as outlined below
-    5. Provide lengthy, detailed explanations - not brief summaries
-    6. DO NOT add any introduction, conclusion, or ANY text outside the 10 sections defined below
-    7. DO NOT include phrases like "Here is my analysis" or "This report outlines"
-    8. DO NOT add horizontal lines (---) or any other separators
-    9. Start IMMEDIATELY with section 1 (Executive Summary)
-    10. End IMMEDIATELY after section 10 (Learning Resources)
+    3. Include a numerical score (0-10) for EACH section in the exact format "SectionName score: X/10"
+    4. Use a consistent structure EXACTLY matching the template below
+    5. Format all section headers as "## Section Name" (h2 level)
+    6. Format all subsection headers as "### Subsection Name" (h3 level)
+    7. DO NOT add any introduction, conclusion, or ANY text outside the 10 sections
+    8. DO NOT include phrases like "Here is my analysis" or "This report outlines"
+    9. DO NOT add horizontal lines (---) or any other separators
+    10. Start IMMEDIATELY with section 1 (Executive Summary)
+    11. End IMMEDIATELY after section 10 (Learning Resources)
     
-    Structure your response with EXACTLY these sections in this order:
+    FORMAT ALL CODE EXAMPLES CONSISTENTLY:
+    - Always include language identifier in code blocks: \`\`\`javascript, \`\`\`typescript, etc.
+    - Use actual code for examples, not pseudocode
+    - Make sure "Before" and "After" code examples have the exact same indentation style
+    - Keep code examples concise (5-15 lines) and focused on the specific issue
     
-    1. **Executive Summary**
-       * Brief overview of code quality and key findings
-       * Overall quality score: X/10
-       * Top 3 strengths
-       * Top 3 areas for improvement
-    
-    2. **Code Architecture and Design**
-       * Analysis of overall architecture
-       * Component relationship assessment
-       * Design patterns used (or missing)
-       * Architectural score: X/10
-    
-    3. **Critical Issues**
-       * Blocking/high-priority issues
-       * Potential crashes or runtime errors
-       * Architectural flaws
-       * Critical issues score: X/10
-    
-    4. **Code Quality Assessment**
-       * Readability analysis
-       * Consistency evaluation
-       * Code complexity measurement
-       * Formatting and style issues
-       * Quality score: X/10
-    
-    5. **Performance Analysis**
-       * Potential bottlenecks
-       * Optimization opportunities
-       * Resource usage concerns
-       * Performance score: X/10
-    
-    6. **Security Review**
-       * Security vulnerabilities
-       * Data handling concerns
-       * Input validation issues
-       * Security score: X/10
-    
-    7. **Maintainability Assessment**
-       * Code duplication analysis
-       * Documentation quality
-       * Testing coverage/quality
-       * Maintainability score: X/10
-    
-    8. **Recommended Refactoring**
-       * Prioritized refactoring suggestions
-       * Before/after code examples
-       * Expected benefits
-       * Refactoring impact score: X/10
-    
-    9. **Best Practices Implementation**
-       * Language-specific best practices assessment
-       * Industry standard adherence
-       * Framework usage optimization
-       * Best practices score: X/10
-    
-    10. **Learning Resources**
-         * Relevant documentation, articles, or tutorials specific to the issues found
-         * Organized by priority/impact
-         * Explanation of why each resource is valuable
-    
-    For ALL sections:
-    - Provide thorough explanations with specific examples from the code
+    CONTENT REQUIREMENTS:
+    - For ALL sections, provide thorough explanations with specific examples from the code
     - Break down complex concepts for educational value
     - Include both positive findings and areas for improvement
     - Justify all scores with detailed reasoning
     
-    Remember: DO NOT add ANY text before section 1 or after section 10. Start and end exactly with the defined sections.`;
+    EXACTLY FOLLOW THIS REPORT STRUCTURE:
+    
+    ## Executive Summary
+    * Brief overview of code quality and key findings
+    * Overall quality score: X/10
+    * Top 3 strengths
+    * Top 3 areas for improvement
+    
+    ## Code Architecture and Design
+    * Analysis of overall architecture
+    * Component relationship assessment
+    * Design patterns used (or missing)
+    * Architectural score: X/10
+    
+    ## Critical Issues
+    * Blocking/high-priority issues
+    * Potential crashes or runtime errors
+    * Architectural flaws
+    * Critical issues score: X/10
+    
+    ## Code Quality Assessment
+    * Readability analysis
+    * Consistency evaluation
+    * Code complexity measurement
+    * Formatting and style issues
+    * Quality score: X/10
+    
+    ## Performance Analysis
+    * Potential bottlenecks
+    * Optimization opportunities
+    * Resource usage concerns
+    * Performance score: X/10
+    
+    ## Security Review
+    * Security vulnerabilities
+    * Data handling concerns
+    * Input validation issues
+    * Security score: X/10
+    
+    ## Maintainability Assessment
+    * Code duplication analysis
+    * Documentation quality
+    * Testing coverage/quality
+    * Maintainability score: X/10
+    
+    ## Recommended Refactoring
+    * Prioritized refactoring suggestions
+    * Before/after code examples (use consistent formatting)
+    * Expected benefits
+    * Refactoring impact score: X/10
+    
+    ## Best Practices Implementation
+    * Language-specific best practices assessment
+    * Industry standard adherence
+    * Framework usage optimization
+    * Best practices score: X/10
+    
+    ## Learning Resources
+    * Relevant documentation, articles, or tutorials specific to the issues found
+    * Organized by priority/impact
+    * Explanation of why each resource is valuable
+    
+    Remember: DO NOT add ANY text before section 1 or after section 10. Start and end exactly with the defined sections.
+    DO NOT add stars, asterisks, or bullet points to the section headers themselves. Format them EXACTLY as "## Section Name".`;
 }
 
 /**
@@ -803,6 +811,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     margin: 0 auto;
                     padding: 20px;
                     background-color: white;
+                    font-size: 16px;
                 }
                 
                 /* Header styling */
@@ -816,15 +825,18 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     color: var(--primary-color);
                     font-size: 2.4em;
                     margin-bottom: 10px;
+                    font-weight: 700;
                 }
                 
                 h2 {
                     color: var(--primary-color);
-                    font-size: 2.2em;
+                    font-size: 1.8em;
                     margin-top: 2em;
                     padding-bottom: 15px;
                     border-bottom: 1px solid var(--border-color);
                     position: relative;
+                    font-weight: 600;
+                    clear: both;
                 }
                 
                 /* Section numbering */
@@ -834,35 +846,28 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     color: var(--primary-color);
                 }
                 
-                h2[id="executive-summary"]:before { content: "1. "; }
-                h2[id="code-architecture"]:before { content: "2. "; }
-                h2[id="critical-issues"]:before { content: "3. "; }
-                h2[id="code-quality"]:before { content: "4. "; }
-                h2[id="performance-analysis"]:before { content: "5. "; }
-                h2[id="security-review"]:before { content: "6. "; }
-                h2[id="maintainability"]:before { content: "7. "; }
-                h2[id="recommended-refactoring"]:before { content: "8. "; }
-                h2[id="best-practices"]:before { content: "9. "; }
-                h2[id="learning-resources"]:before { content: "10. "; }
+                h2#executive-summary:before { content: "1. "; }
+                h2#code-architecture:before { content: "2. "; }
+                h2#critical-issues:before { content: "3. "; }
+                h2#code-quality:before { content: "4. "; }
+                h2#performance-analysis:before { content: "5. "; }
+                h2#security-review:before { content: "6. "; }
+                h2#maintainability:before { content: "7. "; }
+                h2#recommended-refactoring:before { content: "8. "; }
+                h2#best-practices:before { content: "9. "; }
+                h2#learning-resources:before { content: "10. "; }
                 
                 h3 {
                     color: var(--secondary-color);
                     font-size: 1.4em;
                     margin-top: 1.5em;
+                    font-weight: 600;
                 }
                 
                 h4 {
                     color: var(--secondary-color);
                     font-size: 1.2em;
-                }
-                
-                /* Sections */
-                section {
-                    margin-bottom: 30px;
-                    padding: 20px;
-                    background-color: white;
-                    border-radius: 6px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    font-weight: 600;
                 }
                 
                 /* Score indicators */
@@ -873,6 +878,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     padding: 10px 15px;
                     background-color: var(--light-gray);
                     border-radius: 6px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                 }
                 
                 .score-label {
@@ -886,6 +892,9 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     padding: 5px 12px;
                     border-radius: 16px;
                     color: white;
+                    display: inline-block;
+                    min-width: 40px;
+                    text-align: center;
                 }
                 
                 .score-good {
@@ -907,7 +916,13 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 }
                 
                 li {
-                    margin-bottom: 8px;
+                    margin-bottom: 0.8em;
+                    line-height: 1.6;
+                }
+                
+                /* Lists within lists should be more compact */
+                li li {
+                    margin-bottom: 0.4em;
                 }
                 
                 /* Prevent double spacing in lists */
@@ -924,24 +939,6 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     border-radius: 3px;
                     padding: 2px 5px;
                     font-size: 0.9em;
-                }
-                
-                pre {
-                    background-color: var(--light-gray);
-                    padding: 15px;
-                    overflow: auto;
-                    border-radius: 5px;
-                    border-left: 4px solid var(--primary-color);
-                    margin: 1.5em 0;
-                    position: relative;
-                }
-                
-                pre code {
-                    background: transparent;
-                    padding: 0;
-                    font-size: 0.95em;
-                    line-height: 1.5;
-                    display: flex;
                 }
                 
                 /* Tables */
@@ -967,20 +964,6 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     background-color: var(--light-gray);
                 }
                 
-                /* Highlight sections with scores */
-                [id^="executive-summary"],
-                [id^="code-architecture"],
-                [id^="critical-issues"],
-                [id^="code-quality"],
-                [id^="performance-analysis"],
-                [id^="security-review"],
-                [id^="maintainability"],
-                [id^="recommended-refactoring"],
-                [id^="best-practices"] {
-                    padding-top: 15px;
-                    position: relative;
-                }
-                
                 /* Other elements */
                 p {
                     margin: 1em 0;
@@ -998,6 +981,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 
                 strong {
                     color: var(--secondary-color);
+                    font-weight: 600;
                 }
                 
                 /* Navigation */
@@ -1019,6 +1003,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 .toc ul {
                     padding-left: 0;
                     list-style-type: none;
+                    counter-reset: toc-counter;
                 }
                 
                 .toc li {
@@ -1050,40 +1035,13 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     padding-left: 3px;
                 }
                 
-                /* Extra styling for language-specific code blocks */
-                .language-typescript,
-                .language-javascript,
-                .language-python,
-                .language-java,
-                .language-cpp,
-                .language-csharp {
-                    color: #333;
-                }
-                
-                /* Responsive styling */
-                @media (max-width: 768px) {
-                    body {
-                        padding: 15px;
-                    }
-                    
-                    h1 {
-                        font-size: 2em;
-                    }
-                    
-                    h2 {
-                        font-size: 1.5em;
-                    }
-                    
-                    section {
-                        padding: 15px;
-                    }
-                }
-                
+                /* Code block wrapper */
                 .code-block-wrapper {
-                    margin: 2em 0;
-                    border-radius: 8px;
+                    margin: 1.5em 0;
+                    border-radius: 6px;
                     overflow: hidden;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                    max-height: 500px;
                 }
                 
                 .code-header {
@@ -1115,43 +1073,88 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     background: rgba(255,255,255,0.2);
                 }
                 
+                pre {
+                    margin: 0;
+                    overflow: auto;
+                    max-height: 450px;
+                    display: flex;
+                    background-color: #f5f7f9;
+                    border-top: none;
+                }
+                
                 .line-numbers {
-                    user-select: none;
+                    padding: 0.5em;
                     text-align: right;
-                    padding-right: 15px;
-                    color: #858585;
-                    background-color: rgba(0,0,0,0.05);
+                    width: 2.5em;
+                    user-select: none;
+                    color: #888;
+                    background-color: rgba(0,0,0,0.03);
                     border-right: 1px solid rgba(0,0,0,0.1);
-                    min-width: 2.5em;
                 }
                 
                 .line-number {
                     display: block;
-                    line-height: 1.5;
-                    font-size: 0.95em;
+                    font-size: 0.85em;
+                    line-height: 1.4;
+                }
+                
+                code {
+                    padding: 0.5em;
+                    width: 100%;
+                    overflow-x: auto;
+                    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
                 }
                 
                 .code-line {
                     display: block;
-                    line-height: 1.5;
-                    padding-left: 15px;
+                    white-space: pre;
+                    line-height: 1.4;
+                    font-size: 0.9em;
                 }
                 
-                /* Syntax highlighting for common languages */
-                .language-javascript .code-line,
-                .language-typescript .code-line,
-                .language-js .code-line,
-                .language-ts .code-line {
-                    color: #333;
+                /* Consistent spacing between sections */
+                section {
+                    margin-bottom: 2em;
+                    padding-bottom: 1em;
                 }
                 
-                /* Highlight specific syntax elements */
-                .language-javascript .code-line,
-                .language-typescript .code-line,
-                .language-js .code-line,
-                .language-ts .code-line {
-                    /* Keywords */
-                    color: #07a;
+                /* Make spacing consistent for printing */
+                @media print {
+                    h2 {
+                        page-break-before: always;
+                    }
+                    
+                    h2#executive-summary {
+                        page-break-before: avoid;
+                    }
+                    
+                    .code-block-wrapper {
+                        break-inside: avoid;
+                    }
+                    
+                    pre {
+                        white-space: pre-wrap;
+                    }
+                }
+
+                /* Responsive design */
+                @media (max-width: 768px) {
+                    body {
+                        padding: 15px;
+                        font-size: 15px;
+                    }
+                    
+                    h1 {
+                        font-size: 2em;
+                    }
+                    
+                    h2 {
+                        font-size: 1.6em;
+                    }
+                    
+                    .toc li {
+                        padding-left: 24px;
+                    }
                 }
             </style>
         </head>
@@ -1163,7 +1166,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
             
             <div class="toc">
                 <h3>Table of Contents</h3>
-                <ul style="counter-reset: toc-counter;">
+                <ul>
                     <li><a href="#executive-summary">Executive Summary</a></li>
                     <li><a href="#code-architecture">Code Architecture and Design</a></li>
                     <li><a href="#critical-issues">Critical Issues</a></li>
@@ -1182,69 +1185,72 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
             </main>
             
             <script>
-                // Add IDs to all section headings for navigation
+                // Process the document once it's fully loaded
                 document.addEventListener('DOMContentLoaded', function() {
-                    // Find score elements and style them
-                    const content = document.querySelector('main');
+                    // Step 1: Standardize heading formats and add IDs
+                    // Map section titles to IDs
+                    const sectionMap = {
+                        'executive summary': 'executive-summary',
+                        'code architecture': 'code-architecture',
+                        'architecture': 'code-architecture',
+                        'critical issues': 'critical-issues',
+                        'code quality': 'code-quality',
+                        'performance': 'performance-analysis',
+                        'security': 'security-review',
+                        'maintainability': 'maintainability',
+                        'refactoring': 'recommended-refactoring',
+                        'best practices': 'best-practices',
+                        'learning resources': 'learning-resources'
+                    };
                     
                     // Process all h2 elements (main sections)
-                    const headings = content.querySelectorAll('h2');
-                    headings.forEach(heading => {
+                    const h2Elements = document.querySelectorAll('main h2');
+                    h2Elements.forEach(heading => {
                         // Create slug from heading text
-                        const text = heading.innerText.toLowerCase();
-                        let id = '';
+                        const headingText = heading.innerText.toLowerCase();
                         
-                        // Remove numbering if present in heading text (e.g., "1. Executive Summary")
-                        const cleanText = text.replace(/^\d+\.\s+/, '');
+                        // Remove numbering if present (e.g., "1. Executive Summary")
+                        const cleanText = headingText.replace(/^\d+\.?\s+/, '');
                         
-                        if (cleanText.includes('executive summary')) id = 'executive-summary';
-                        else if (cleanText.includes('architecture')) id = 'code-architecture';
-                        else if (cleanText.includes('critical issues')) id = 'critical-issues';
-                        else if (cleanText.includes('code quality')) id = 'code-quality';
-                        else if (cleanText.includes('performance')) id = 'performance-analysis';
-                        else if (cleanText.includes('security')) id = 'security-review';
-                        else if (cleanText.includes('maintainability')) id = 'maintainability';
-                        else if (cleanText.includes('refactoring')) id = 'recommended-refactoring';
-                        else if (cleanText.includes('best practices')) id = 'best-practices';
-                        else if (cleanText.includes('learning')) id = 'learning-resources';
-                        
-                        if (id) {
-                            heading.id = id;
-                            
-                            // Keep the numbering in the heading but add the proper ID
-                            // This preserves the "1. Executive Summary" format in the heading
-                        }
-                        
-                        // Find score indicators (numeric X/10)
-                        const scoreRegex = /score:\s*(\d+)\/10/i;
-                        let scoreValue = null;
-                        
-                        // Check the heading text itself for a score
-                        let headingMatch = heading.innerText.match(scoreRegex);
-                        if (headingMatch) {
-                            scoreValue = parseInt(headingMatch[1]);
-                        } else if (heading.nextElementSibling) {
-                            // Otherwise check nearby elements
-                            let nextElement = heading.nextElementSibling;
-                            const searchLimit = 5; // Look at the next few elements
-                            
-                            for (let i = 0; i < searchLimit; i++) {
-                                if (!nextElement) break;
-                                
-                                const textContent = nextElement.textContent.toLowerCase();
-                                const match = textContent.match(scoreRegex);
-                                
-                                if (match) {
-                                    scoreValue = parseInt(match[1]);
-                                    break;
-                                }
-                                
-                                nextElement = nextElement.nextElementSibling;
+                        // Find the matching ID from our mapping
+                        let id = null;
+                        for (const [key, value] of Object.entries(sectionMap)) {
+                            if (cleanText.includes(key)) {
+                                id = value;
+                                break;
                             }
                         }
                         
-                        // Create score display if found
-                        if (scoreValue !== null && id !== 'learning-resources') {
+                        if (id) {
+                            heading.id = id;
+                        }
+                    });
+                    
+                    // Step 2: Extract and standardize scores
+                    h2Elements.forEach(heading => {
+                        if (!heading.id || heading.id === 'learning-resources') return;
+                        
+                        // Look for score information in nearby content
+                        const scoreRegex = /\b([a-z]+)\s+score:\s*(\d+)\/10\b/i;
+                        
+                        let scoreValue = null;
+                        let nextElem = heading.nextElementSibling;
+                        const maxSearch = 5; // Look through next 5 elements maximum
+                        
+                        for (let i = 0; i < maxSearch && nextElem; i++) {
+                            const textContent = nextElem.textContent;
+                            const match = textContent.match(scoreRegex);
+                            
+                            if (match) {
+                                scoreValue = parseInt(match[2]);
+                                break;
+                            }
+                            nextElem = nextElem.nextElementSibling;
+                        }
+                        
+                        // If score found, create standardized score display
+                        if (scoreValue !== null) {
+                            // Create score container
                             const scoreContainer = document.createElement('div');
                             scoreContainer.className = 'score-container';
                             
@@ -1255,7 +1261,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                             const score = document.createElement('div');
                             score.className = 'score';
                             
-                            // Add color class based on score
+                            // Add appropriate color class
                             if (scoreValue >= 8) {
                                 score.classList.add('score-good');
                             } else if (scoreValue >= 5) {
@@ -1274,7 +1280,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                         }
                     });
                     
-                    // Handle copy buttons for code blocks
+                    // Step 3: Setup code block copy functionality
                     document.querySelectorAll('.copy-btn').forEach(button => {
                         button.addEventListener('click', function() {
                             const targetId = this.getAttribute('data-clipboard-target').substring(1);
@@ -1287,27 +1293,31 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                                     text += line.textContent + "\\n";
                                 });
                                 
-                                // Create a temporary textarea element
-                                const textarea = document.createElement('textarea');
-                                textarea.value = text;
-                                textarea.setAttribute('readonly', '');
-                                textarea.style.position = 'absolute';
-                                textarea.style.left = '-9999px';
-                                document.body.appendChild(textarea);
-                                
-                                // Select and copy
-                                textarea.select();
-                                document.execCommand('copy');
-                                
-                                // Remove the textarea
-                                document.body.removeChild(textarea);
-                                
-                                // Update button text temporarily
-                                const originalText = this.textContent;
-                                this.textContent = 'Copied!';
-                                setTimeout(() => {
-                                    this.textContent = originalText;
-                                }, 2000);
+                                // Use modern clipboard API if available
+                                if (navigator.clipboard && window.isSecureContext) {
+                                    navigator.clipboard.writeText(text).then(() => {
+                                        this.textContent = 'Copied!';
+                                        setTimeout(() => {
+                                            this.textContent = 'Copy';
+                                        }, 2000);
+                                    });
+                                } else {
+                                    // Fallback for older browsers
+                                    const textarea = document.createElement('textarea');
+                                    textarea.value = text;
+                                    textarea.setAttribute('readonly', '');
+                                    textarea.style.position = 'absolute';
+                                    textarea.style.left = '-9999px';
+                                    document.body.appendChild(textarea);
+                                    textarea.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(textarea);
+                                    
+                                    this.textContent = 'Copied!';
+                                    setTimeout(() => {
+                                        this.textContent = 'Copy';
+                                    }, 2000);
+                                }
                             }
                         });
                     });
