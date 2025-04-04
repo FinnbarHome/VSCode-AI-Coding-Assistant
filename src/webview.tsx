@@ -281,9 +281,9 @@ const VSCodeWebview: React.FC = () => {
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
-    // Request detailed PDF report generation
+    // Request detailed HTML report generation
     const generateReport = () => {
-        console.log("Sending generatePDFReport command to extension");
+        console.log("Sending generateHTMLReport command to extension");
         // Set loading state to show initial feedback to user
         setReportProgress({
             state: 'loading',
@@ -291,7 +291,7 @@ const VSCodeWebview: React.FC = () => {
             message: 'Starting report generation...'
         });
         vscode.postMessage({ 
-            command: "generatePDFReport",
+            command: "generateHTMLReport",
             timestamp: new Date().toISOString() // Add timestamp to ensure uniqueness
         });
     };

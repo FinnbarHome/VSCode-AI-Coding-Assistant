@@ -827,6 +827,7 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
         <html lang="en">
         <head>
             <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Code Analysis Report</title>
             <style>
                 :root {
@@ -840,13 +841,21 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     --score-good: #27ae60;
                     --score-medium: #f39c12;
                     --score-bad: #e74c3c;
+                    --shadow-sm: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+                    --shadow-md: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+                    --shadow-lg: 0 10px 20px rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.05);
+                    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                    --font-mono: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                    --radius-sm: 4px;
+                    --radius-md: 6px;
+                    --radius-lg: 8px;
                 }
                 
                 body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                    font-family: var(--font-sans);
                     line-height: 1.6;
                     color: var(--dark-gray);
-                    max-width: 1000px;
+                    max-width: 1100px;
                     margin: 0 auto;
                     padding: 20px;
                     background-color: white;
@@ -855,22 +864,50 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 
                 /* Header styling */
                 header {
-                    border-bottom: 2px solid var(--primary-color);
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
+                    background: linear-gradient(135deg, var(--primary-color), #0056a3);
+                    color: white;
+                    border-radius: var(--radius-lg);
+                    padding: 30px;
+                    margin-bottom: 40px;
+                    box-shadow: var(--shadow-md);
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                header::after {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    bottom: 0;
+                    left: 0;
+                    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 0 L100 0 L100 100 Z" fill="rgba(255,255,255,0.1)"/></svg>');
+                    background-size: 100% 100%;
+                    opacity: 0.2;
                 }
                 
                 h1 {
-                    color: var(--primary-color);
-                    font-size: 2.4em;
+                    color: white;
+                    font-size: 2.6em;
                     margin-bottom: 10px;
                     font-weight: 700;
+                    position: relative;
+                    z-index: 1;
+                }
+                
+                #report-date {
+                    font-weight: 300;
+                    font-size: 1.1em;
+                    opacity: 0.9;
+                    margin: 0;
+                    position: relative;
+                    z-index: 1;
                 }
                 
                 h2 {
                     color: var(--primary-color);
                     font-size: 1.8em;
-                    margin-top: 2em;
+                    margin-top: 2.5em;
                     padding-bottom: 15px;
                     border-bottom: 1px solid var(--border-color);
                     position: relative;
@@ -879,27 +916,29 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 }
                 
                 /* Section numbering */
-                h2:before {
+                h2::before {
                     margin-right: 10px;
                     font-weight: bold;
                     color: var(--primary-color);
+                    opacity: 0.8;
                 }
                 
-                h2#executive-summary:before { content: "1. "; }
-                h2#code-architecture:before { content: "2. "; }
-                h2#critical-issues:before { content: "3. "; }
-                h2#code-quality:before { content: "4. "; }
-                h2#performance-analysis:before { content: "5. "; }
-                h2#security-review:before { content: "6. "; }
-                h2#maintainability:before { content: "7. "; }
-                h2#recommended-refactoring:before { content: "8. "; }
-                h2#best-practices:before { content: "9. "; }
-                h2#learning-resources:before { content: "10. "; }
+                h2#executive-summary::before { content: "1. "; }
+                h2#code-architecture::before { content: "2. "; }
+                h2#critical-issues::before { content: "3. "; }
+                h2#code-quality::before { content: "4. "; }
+                h2#performance-analysis::before { content: "5. "; }
+                h2#security-review::before { content: "6. "; }
+                h2#maintainability::before { content: "7. "; }
+                h2#recommended-refactoring::before { content: "8. "; }
+                h2#best-practices::before { content: "9. "; }
+                h2#learning-resources::before { content: "10. "; }
                 
                 h3 {
                     color: var(--secondary-color);
                     font-size: 1.4em;
-                    margin-top: 1.5em;
+                    margin-top: 1.8em;
+                    margin-bottom: 0.8em;
                     font-weight: 600;
                 }
                 
@@ -907,56 +946,77 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     color: var(--secondary-color);
                     font-size: 1.2em;
                     font-weight: 600;
+                    margin-top: 1.5em;
                 }
                 
                 /* Score indicators */
                 .score-container {
                     display: flex;
                     align-items: center;
-                    margin: 15px 0;
-                    padding: 10px 15px;
+                    margin: 20px 0;
+                    padding: 15px 20px;
                     background-color: var(--light-gray);
-                    border-radius: 6px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    border-radius: var(--radius-md);
+                    box-shadow: var(--shadow-sm);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    border-left: 4px solid var(--primary-color);
+                }
+                
+                .score-container:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-md);
                 }
                 
                 .score-label {
                     font-weight: bold;
                     margin-right: 15px;
+                    font-size: 1.05em;
                 }
                 
                 .score {
                     font-size: 1.2em;
                     font-weight: bold;
-                    padding: 5px 12px;
-                    border-radius: 16px;
+                    padding: 6px 14px;
+                    border-radius: 20px;
                     color: white;
                     display: inline-block;
                     min-width: 40px;
                     text-align: center;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                 }
                 
                 .score-good {
-                    background-color: var(--score-good);
+                    background: linear-gradient(135deg, var(--score-good), #219653);
                 }
                 
                 .score-medium {
-                    background-color: var(--score-medium);
+                    background: linear-gradient(135deg, var(--score-medium), #e67e22);
                 }
                 
                 .score-bad {
-                    background-color: var(--score-bad);
+                    background: linear-gradient(135deg, var(--score-bad), #c0392b);
                 }
                 
                 /* Lists */
                 ul, ol {
                     padding-left: 2em;
-                    margin: 1em 0;
+                    margin: 1.2em 0;
                 }
                 
                 li {
                     margin-bottom: 0.8em;
-                    line-height: 1.6;
+                    line-height: 1.7;
+                    position: relative;
+                }
+                
+                ul > li::before {
+                    content: "•";
+                    color: var(--primary-color);
+                    font-weight: bold;
+                    display: inline-block;
+                    width: 1em;
+                    margin-left: -1em;
+                    font-size: 1.2em;
                 }
                 
                 /* Lists within lists should be more compact */
@@ -973,9 +1033,9 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 
                 /* Code blocks */
                 code {
-                    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                    font-family: var(--font-mono);
                     background: var(--light-gray);
-                    border-radius: 3px;
+                    border-radius: var(--radius-sm);
                     padding: 2px 5px;
                     font-size: 0.9em;
                 }
@@ -984,38 +1044,50 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 table {
                     border-collapse: collapse;
                     width: 100%;
-                    margin: 1.5em 0;
+                    margin: 1.8em 0;
+                    box-shadow: var(--shadow-sm);
+                    border-radius: var(--radius-md);
+                    overflow: hidden;
                 }
                 
                 th, td {
-                    padding: 12px 15px;
+                    padding: 14px 18px;
                     text-align: left;
-                    border-bottom: 1px solid var(--border-color);
                 }
                 
                 th {
                     background-color: var(--primary-light);
                     color: var(--secondary-color);
                     font-weight: bold;
+                    border-bottom: 2px solid var(--primary-color);
+                    position: relative;
                 }
                 
                 tr:nth-child(even) {
                     background-color: var(--light-gray);
                 }
                 
+                tr:hover {
+                    background-color: rgba(0, 120, 215, 0.05);
+                }
+                
                 /* Other elements */
                 p {
-                    margin: 1em 0;
+                    margin: 1.2em 0;
                     line-height: 1.8;
                 }
                 
                 a {
                     color: var(--primary-color);
                     text-decoration: none;
+                    transition: color 0.2s, border-bottom 0.2s;
+                    border-bottom: 1px solid transparent;
                 }
                 
                 a:hover {
-                    text-decoration: underline;
+                    color: var(--accent-color);
+                    border-bottom: 1px solid var(--accent-color);
+                    text-decoration: none;
                 }
                 
                 strong {
@@ -1025,11 +1097,22 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 
                 /* Navigation */
                 .toc {
-                    background-color: var(--light-gray);
-                    padding: 20px 25px;
-                    border-radius: 6px;
-                    margin-bottom: 30px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    background: linear-gradient(to bottom, #f8f9fa, #f1f3f5);
+                    padding: 25px 30px;
+                    border-radius: var(--radius-lg);
+                    margin-bottom: 40px;
+                    box-shadow: var(--shadow-md);
+                    border-left: 4px solid var(--primary-color);
+                    position: relative;
+                }
+                
+                .toc::before {
+                    content: "📋";
+                    position: absolute;
+                    top: -15px;
+                    right: 20px;
+                    font-size: 2.5em;
+                    opacity: 0.15;
                 }
                 
                 .toc h3 {
@@ -1037,6 +1120,8 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     margin-bottom: 15px;
                     color: var(--primary-color);
                     font-size: 1.5em;
+                    border-bottom: 2px solid rgba(0, 120, 215, 0.2);
+                    padding-bottom: 10px;
                 }
                 
                 .toc ul {
@@ -1048,16 +1133,29 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 .toc li {
                     margin-bottom: 12px;
                     position: relative;
-                    padding-left: 28px;
+                    padding-left: 32px;
+                    transition: transform 0.2s;
                 }
                 
-                .toc li:before {
+                .toc li:hover {
+                    transform: translateX(5px);
+                }
+                
+                .toc li::before {
                     content: counter(toc-counter) ".";
                     counter-increment: toc-counter;
                     position: absolute;
                     left: 0;
                     font-weight: bold;
                     color: var(--primary-color);
+                    background-color: rgba(0, 120, 215, 0.1);
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.85em;
                 }
                 
                 .toc a {
@@ -1066,32 +1164,35 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     font-size: 1.1em;
                     font-weight: 500;
                     transition: all 0.2s ease;
+                    display: block;
+                    padding: 3px 0;
                 }
                 
                 .toc a:hover {
                     color: var(--accent-color);
                     text-decoration: none;
-                    padding-left: 3px;
+                    border-bottom: none;
                 }
                 
                 /* Code block wrapper */
                 .code-block-wrapper {
-                    margin: 1.5em 0;
-                    border-radius: 6px;
+                    margin: 1.8em 0;
+                    border-radius: var(--radius-md);
                     overflow: hidden;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                    box-shadow: var(--shadow-md);
                     max-height: 500px;
+                    border: 1px solid rgba(0,0,0,0.05);
                 }
                 
                 .code-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    background: var(--secondary-color);
+                    background: linear-gradient(to right, var(--secondary-color), #34495e);
                     color: white;
-                    padding: 8px 15px;
+                    padding: 10px 15px;
                     font-size: 0.85em;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-family: var(--font-sans);
                 }
                 
                 .code-language {
@@ -1102,14 +1203,16 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 
                 .copy-btn {
                     cursor: pointer;
-                    background: rgba(255,255,255,0.1);
-                    padding: 3px 8px;
-                    border-radius: 4px;
+                    background: rgba(255,255,255,0.15);
+                    padding: 4px 10px;
+                    border-radius: var(--radius-sm);
                     transition: all 0.2s ease;
+                    font-size: 0.9em;
                 }
                 
                 .copy-btn:hover {
-                    background: rgba(255,255,255,0.2);
+                    background: rgba(255,255,255,0.25);
+                    transform: translateY(-1px);
                 }
                 
                 pre {
@@ -1117,14 +1220,14 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     overflow: auto;
                     max-height: 450px;
                     display: flex;
-                    background-color: #f5f7f9;
+                    background-color: #f8f9fa;
                     border-top: none;
                 }
                 
                 .line-numbers {
-                    padding: 0.5em;
+                    padding: 0.8em 0.5em;
                     text-align: right;
-                    width: 2.5em;
+                    width: 3em;
                     user-select: none;
                     color: #888;
                     background-color: rgba(0,0,0,0.03);
@@ -1134,27 +1237,34 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                 .line-number {
                     display: block;
                     font-size: 0.85em;
-                    line-height: 1.4;
+                    line-height: 1.5;
+                    color: #aaa;
                 }
                 
                 code {
-                    padding: 0.5em;
+                    padding: 0.8em;
                     width: 100%;
                     overflow-x: auto;
-                    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                    font-family: var(--font-mono);
                 }
                 
                 .code-line {
                     display: block;
                     white-space: pre;
-                    line-height: 1.4;
+                    line-height: 1.5;
                     font-size: 0.9em;
+                }
+                
+                /* Syntax highlighting */
+                .language-javascript .code-line, 
+                .language-typescript .code-line {
+                    color: #333;
                 }
                 
                 /* Consistent spacing between sections */
                 section {
-                    margin-bottom: 2em;
-                    padding-bottom: 1em;
+                    margin-bottom: 2.5em;
+                    padding-bottom: 1.5em;
                 }
                 
                 /* Make spacing consistent for printing */
@@ -1174,6 +1284,15 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     pre {
                         white-space: pre-wrap;
                     }
+                    
+                    a {
+                        text-decoration: none;
+                        color: var(--dark-gray);
+                    }
+                    
+                    .score-container {
+                        break-inside: avoid;
+                    }
                 }
 
                 /* Responsive design */
@@ -1181,6 +1300,10 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     body {
                         padding: 15px;
                         font-size: 15px;
+                    }
+                    
+                    header {
+                        padding: 20px;
                     }
                     
                     h1 {
@@ -1192,7 +1315,11 @@ export async function convertMarkdownToPdf(markdownPath: string): Promise<string
                     }
                     
                     .toc li {
-                        padding-left: 24px;
+                        padding-left: 28px;
+                    }
+                    
+                    .code-block-wrapper {
+                        max-height: 350px;
                     }
                 }
             </style>

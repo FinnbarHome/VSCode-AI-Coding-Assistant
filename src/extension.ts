@@ -458,9 +458,9 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             
             if (message.command === 'getAIAnalysis') {
                 await this.handleAIAnalysis();
-            } else if (message.command === 'generatePDFReport') {
-                console.log("generatePDFReport command received from webview");
-                await this.handlePDFReport();
+            } else if (message.command === 'generateHTMLReport') {
+                console.log("generateHTMLReport command received from webview");
+                await this.handleHTMLReport();
             }
         });
     }
@@ -677,8 +677,8 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         this._view?.webview.postMessage({ command: 'displayFileInfo', filename, response });
     }
 
-    async handlePDFReport() {
-        console.log("handlePDFReport called");
+    async handleHTMLReport() {
+        console.log("handleHTMLReport called");
         
         // Check view state
         if (!this._view) {
@@ -746,16 +746,16 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 return;
             }
             
-            // Step 3: Convert to PDF
+            // Step 3: Convert to HTML
             progress.report({ 
                 increment: 60, 
-                message: "Converting to PDF format..." 
+                message: "Converting to HTML format..." 
             });
             
-            this.postProgressMessage('loading', 'PDF Conversion', 'Converting markdown to PDF (this may take a moment)...');
+            this.postProgressMessage('loading', 'HTML Conversion', 'Converting markdown to HTML (this may take a moment)...');
             
             try {
-                // Convert markdown to PDF
+                // Convert markdown to HTML
                 console.log(`Attempting to convert ${markdownFilePath} to HTML`);
                 const convertedFilePath = await convertMarkdownToPdf(markdownFilePath);
                 
@@ -788,12 +788,12 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                         `HTML report generated and opened in a new tab.`
                     );
                 } else if (isPdf) {
-                    // PDF report created
-                    vscode.window.showInformationMessage(`PDF report for ${shortFileName} generated successfully.`);
+                    // PDF report created - this is deprecated but keeping check for compatibility
+                    vscode.window.showInformationMessage(`Report for ${shortFileName} generated successfully.`);
                     this.postProgressMessage(
                         'success', 
                         'Report Complete', 
-                        `PDF report generated and opened in a new tab.`
+                        `Report generated and opened in a new tab.`
                     );
                 } else {
                     // Markdown fallback
@@ -809,9 +809,9 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 await this.delay(3000);
                 this.postProgressMessage('idle');
             } catch (error) {
-                console.error("PDF conversion error:", error);
-                vscode.window.showErrorMessage(`Error creating PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                this.postProgressMessage('error', 'PDF Creation Failed', 'Could not convert to PDF format.');
+                console.error("HTML conversion error:", error);
+                vscode.window.showErrorMessage(`Error creating report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                this.postProgressMessage('error', 'Report Creation Failed', 'Could not convert to HTML format.');
                 await this.delay(3000); // Show error for 3 seconds
                 this.postProgressMessage('idle');
             }
@@ -873,14 +873,14 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register command for PDF report
     context.subscriptions.push(
-        vscode.commands.registerCommand('aiCodingAssistant.generatePDFReport', async () => {
-            console.log("PDF report command triggered");
+        vscode.commands.registerCommand('aiCodingAssistant.generateHTMLReport', async () => {
+            console.log("HTML report command triggered");
             if (!webviewProvider) {
                 console.error("Webview provider not initialized");
                 vscode.window.showErrorMessage("AI Assistant not properly initialized");
                 return;
             }
-            await webviewProvider.handlePDFReport();
+            await webviewProvider.handleHTMLReport();
         })
     );
 

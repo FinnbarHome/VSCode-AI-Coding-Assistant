@@ -23,9 +23,9 @@
         "icon": "$(search)"
       },
       {
-        "command": "aiCodingAssistant.generatePDFReport",
+        "command": "aiCodingAssistant.generateHTMLReport",
         "title": "Generate Comprehensive Report",
-        "icon": "$(file-pdf)"
+        "icon": "$(file-code)"
       }
     ],
     "viewsContainers": {
@@ -59,7 +59,7 @@
           "group": "navigation"
         },
         {
-          "command": "aiCodingAssistant.generatePDFReport",
+          "command": "aiCodingAssistant.generateHTMLReport",
           "when": "view == aiCodingTreeView",
           "group": "navigation"
         }
