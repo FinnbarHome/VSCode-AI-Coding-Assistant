@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getAIResponse, generateReport, convertMarkdownToPdf } from './ai';
+import { getAIResponse, generateReport, convertMarkdownToHtml } from './ai';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -757,7 +757,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             try {
                 // Convert markdown to HTML
                 console.log(`Attempting to convert ${markdownFilePath} to HTML`);
-                const convertedFilePath = await convertMarkdownToPdf(markdownFilePath);
+                const convertedFilePath = await convertMarkdownToHtml(markdownFilePath);
                 
                 // Step 4: Finalize
                 progress.report({ 
@@ -871,7 +871,7 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register command for PDF report
+    // Register command for HTML report
     context.subscriptions.push(
         vscode.commands.registerCommand('aiCodingAssistant.generateHTMLReport', async () => {
             console.log("HTML report command triggered");

@@ -2,23 +2,7 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
-import markdownpdf from 'markdown-pdf';
 import { promisify } from 'util';
-
-// Properly promisify markdown-pdf
-const convertToPdf = (inputPath: string, outputPath: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        markdownpdf()
-            .from(inputPath)
-            .to(outputPath, (err: Error | null) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(outputPath);
-                }
-            });
-    });
-};
 
 // ==============================
 // Configuration and Setup
@@ -442,15 +426,15 @@ export async function generateReport(prompt: string): Promise<string> {
 }
 
 // ==============================
-// PDF Functions
+// HTML Conversion Functions
 // ==============================
 
 /**
- * Convert a markdown file to PDF
+ * Convert a markdown file to HTML
  */
-export async function convertMarkdownToPdf(markdownPath: string): Promise<string> {
+export async function convertMarkdownToHtml(markdownPath: string): Promise<string> {
     try {
-        console.log(`Starting PDF conversion for: ${markdownPath}`);
+        console.log(`Starting HTML conversion for: ${markdownPath}`);
         
         // Read the markdown content
         const markdownContent = fs.readFileSync(markdownPath, 'utf-8');
