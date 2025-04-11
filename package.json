@@ -96,7 +96,6 @@
     "classnames": "^2.5.1",
     "dotenv": "^16.4.7",
     "lucide-react": "^0.475.0",
-    "markdown-pdf": "^11.0.0",
     "openai": "^4.73.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

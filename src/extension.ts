@@ -772,7 +772,6 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 
                 // Check what type of file was created
                 const isHtml = convertedFilePath.toLowerCase().endsWith('.html');
-                const isPdf = convertedFilePath.toLowerCase().endsWith('.pdf');
                 const isMd = convertedFilePath.toLowerCase().endsWith('.md');
                 
                 // Open the appropriate file
@@ -786,14 +785,6 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                         'success', 
                         'Report Complete', 
                         `HTML report generated and opened in a new tab.`
-                    );
-                } else if (isPdf) {
-                    // PDF report created - this is deprecated but keeping check for compatibility
-                    vscode.window.showInformationMessage(`Report for ${shortFileName} generated successfully.`);
-                    this.postProgressMessage(
-                        'success', 
-                        'Report Complete', 
-                        `Report generated and opened in a new tab.`
                     );
                 } else {
                     // Markdown fallback
