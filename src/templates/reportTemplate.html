@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Analysis Report</title>
+    <link rel="stylesheet" href="{{cssPath}}">
+</head>
+<body>
+    <header>
+        <h1>Code Analysis Report</h1>
+        <p id="report-date">Generated on {{generationDate}}</p>
+    </header>
+    
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#executive-summary">Executive Summary</a></li>
+            <li><a href="#code-architecture">Code Architecture and Design</a></li>
+            <li><a href="#critical-issues">Critical Issues</a></li>
+            <li><a href="#code-quality">Code Quality Assessment</a></li>
+            <li><a href="#performance-analysis">Performance Analysis</a></li>
+            <li><a href="#security-review">Security Review</a></li>
+            <li><a href="#maintainability">Maintainability Assessment</a></li>
+            <li><a href="#recommended-refactoring">Recommended Refactoring</a></li>
+            <li><a href="#best-practices">Best Practices Implementation</a></li>
+            <li><a href="#learning-resources">Learning Resources</a></li>
+        </ul>
+    </div>
+    
+    <main>
+        {{processedContent}}
+    </main>
+    
+    <script src="{{scriptPath}}"></script>
+</body>
+</html> 
