@@ -1,84 +1,120 @@
 import OpenAI from 'openai';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
 
 // ==============================
-// Configuration and Setup
+// Configuration and Environment
 // ==============================
 
 /**
- * Initialize environment variables and API client
+ * Manages environment configuration and OpenAI API setup
  */
-function initializeEnvironment() {
-    // Load environment variables
-    dotenv.config({ path: path.resolve(__dirname, '../.env') });
+class ApiConfig {
+    private static instance: ApiConfig;
+    public readonly apiKey: string;
+    public readonly openai: OpenAI;
+    public readonly responsesDir: string;
 
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-        console.error("❌ OpenAI API Key is missing! Check your .env file.");
-        throw new Error("OpenAI API Key not found. Make sure you have a valid `.env` file.");
+    private constructor() {
+        this.apiKey = this.loadApiKey();
+        this.openai = new OpenAI({ apiKey: this.apiKey });
+        this.responsesDir = this.initializeResponsesDirectory();
     }
 
-    return apiKey;
-}
+    /**
+     * Loads API key from environment variables
+     */
+    private loadApiKey(): string {
+        dotenv.config({ path: path.resolve(__dirname, '../.env') });
+        const apiKey = process.env.OPENAI_API_KEY;
 
-const apiKey = initializeEnvironment();
+        if (!apiKey) {
+            console.error("❌ OpenAI API Key is missing! Check your .env file.");
+            throw new Error("OpenAI API Key not found. Make sure you have a valid `.env` file.");
+        }
 
-// Initialize OpenAI instance
-const openai = new OpenAI({ apiKey });
+        return apiKey;
+    }
 
-// Create the responses directory if it doesn't exist
-const responsesDir = path.resolve(__dirname, '../responses');
-if (!fs.existsSync(responsesDir)) {
-    fs.mkdirSync(responsesDir, { recursive: true });
-}
+    /**
+     * Creates and initializes the responses directory
+     */
+    private initializeResponsesDirectory(): string {
+        const dir = path.resolve(__dirname, '../responses');
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        return dir;
+    }
 
-// ==============================
-// File Management Functions
-// ==============================
-
-/**
- * Generate a timestamped filename for response files
- */
-function getTimestampedFilename(prefix = 'response', extension = '.txt'): string {
-    const now = new Date();
-    const timestamp = now.toISOString().replace(/:/g, '-'); // Ensures filename is valid
-    return path.join(responsesDir, `${prefix}-${timestamp}${extension}`);
-}
-
-/**
- * Save content to a file and return the file path
- */
-function saveToFile(content: string, filePath: string): string {
-    try {
-        fs.writeFileSync(filePath, content, 'utf-8');
-        return filePath;
-    } catch (error) {
-        console.error(`Error saving to file: ${error}`);
-        throw error;
+    /**
+     * Gets the singleton instance of ApiConfig
+     */
+    public static getInstance(): ApiConfig {
+        if (!ApiConfig.instance) {
+            ApiConfig.instance = new ApiConfig();
+        }
+        return ApiConfig.instance;
     }
 }
 
+// Create a singleton instance of ApiConfig
+const config = ApiConfig.getInstance();
+
+// ==============================
+// File Management Utilities
+// ==============================
+
 /**
- * Save AI response to a file with timestamp
+ * Manages all file operations for saving AI responses
  */
-function saveResponseToFile(content: string): string {
-    const filePath = getTimestampedFilename();
-    return saveToFile(content, filePath);
+class FileManager {
+    /**
+     * Generates a timestamped filename in the responses directory
+     */
+    public static getTimestampedFilename(prefix = 'response', extension = '.txt'): string {
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/:/g, '-'); // Ensures filename is valid
+        return path.join(config.responsesDir, `${prefix}-${timestamp}${extension}`);
+    }
+
+    /**
+     * Saves content to a file and returns the file path
+     */
+    public static saveToFile(content: string, filePath: string): string {
+        try {
+            fs.writeFileSync(filePath, content, 'utf-8');
+            return filePath;
+        } catch (error) {
+            console.error(`Error saving to file: ${error}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Saves AI response with a timestamp and returns the file path
+     */
+    public static saveResponseToFile(content: string, prefix = 'response', extension = '.txt'): string {
+        const filePath = this.getTimestampedFilename(prefix, extension);
+        return this.saveToFile(content, filePath);
+    }
 }
 
 // ==============================
-// AI Request Functions
+// AI Request Utilities
 // ==============================
 
 /**
- * Create the system message for AI code review
+ * Provides templates for AI system prompts
  */
-function createSystemMessage(): string {
-    return `You are a strict AI code reviewer. Your response **must be structured into exactly 10 sections** using the format below:
+class PromptTemplates {
+    /**
+     * Creates the system message for standard code review
+     */
+    public static createCodeReviewPrompt(): string {
+        return `You are a strict AI code reviewer. Your response **must be structured into exactly 10 sections** using the format below:
 
             #### Serious Problems
             (List problems here, or write "No issues found.")
@@ -117,13 +153,13 @@ function createSystemMessage(): string {
             - ✅ Include code snippets when they would be helpful
             - ✅ Keep code snippets concise and focused on the specific issue
             - ✅ Use appropriate language tags in code blocks (e.g., \`\`\`typescript, \`\`\`javascript, etc.)`;
-}
+    }
 
-/**
- * Create the system message for comprehensive reports
- */
-export function createReportSystemMessage(): string {
-    return `You are a senior code reviewer creating a comprehensive, formal code analysis report.
+    /**
+     * Creates the system message for comprehensive reports
+     */
+    public static createReportPrompt(): string {
+        return `You are a senior code reviewer creating a comprehensive, formal code analysis report.
     Your analysis should be extremely thorough, professional, and educational - suitable for enterprise documentation.
     
     CRITICAL FORMATTING INSTRUCTIONS:
@@ -254,108 +290,122 @@ export function createReportSystemMessage(): string {
     
     Remember: DO NOT add ANY text before section 1 or after section 10. Start and end exactly with the defined sections.
     DO NOT add stars, asterisks, or bullet points to the section headers themselves. Format them EXACTLY as "## Section Name".`;
-}
-
-/**
- * Truncate content if it exceeds maximum length
- */
-function truncateContent(content: string, maxLength: number): string {
-    if (content.length <= maxLength) {
-        return content;
     }
-    return content.slice(0, maxLength) + '\n\n[Content truncated due to length]';
 }
 
 /**
- * Create a fallback response for timeout scenarios
+ * Handles error and timeout fallback responses
  */
-function createTimeoutResponse(): string {
-    return "#### Serious Problems\nRequest timed out. Please try again with a smaller code sample.\n\n" +
-           "#### Warnings\nNo issues found.\n\n" +
-           "#### Refactoring Suggestions\nNo issues found.\n\n" +
-           "#### Coding Conventions\nNo issues found.\n\n" +
-           "#### Performance Optimization\nNo issues found.\n\n" +
-           "#### Security Issues\nNo issues found.\n\n" +
-           "#### Best Practices\nNo issues found.\n\n" +
-           "#### Readability and Maintainability\nNo issues found.\n\n" +
-           "#### Code Smells\nNo issues found.\n\n" +
-           "#### Educational Tips\nTry submitting smaller code samples for better performance.";
-}
-
-/**
- * Create a fallback response for report timeout scenarios
- */
-function createReportTimeoutResponse(): string {
-    return "# Report Generation Timed Out\n\nThe report generation process took too long and timed out. This might be due to high server load or complexity of the code. Please try again later with a smaller code sample.";
-}
-
-/**
- * Handle API request timeout
- */
-async function handleTimeout(error: any, isReport = false): Promise<string> {
-    console.error(`AI response failed: ${error.message}`);
-    
-    if (error.message && error.message.includes('timed out')) {
-        const fallbackContent = isReport 
-            ? createReportTimeoutResponse() 
-            : createTimeoutResponse();
-        
-        // Generate appropriate file name for the fallback response
-        const prefix = isReport ? 'report-response-timeout' : 'response-timeout';
-        const extension = isReport ? '.md' : '.txt';
-        const fileName = getTimestampedFilename(prefix, extension);
-        
-        // Save the fallback response
-        saveToFile(fallbackContent, fileName);
-        console.log(`⚠️ Request timed out. Fallback response saved to: ${fileName}`);
-        
-        return fileName;
+class FallbackResponses {
+    /**
+     * Creates a standard fallback response for timeout scenarios
+     */
+    public static createTimeoutResponse(): string {
+        return "#### Serious Problems\nRequest timed out. Please try again with a smaller code sample.\n\n" +
+               "#### Warnings\nNo issues found.\n\n" +
+               "#### Refactoring Suggestions\nNo issues found.\n\n" +
+               "#### Coding Conventions\nNo issues found.\n\n" +
+               "#### Performance Optimization\nNo issues found.\n\n" +
+               "#### Security Issues\nNo issues found.\n\n" +
+               "#### Best Practices\nNo issues found.\n\n" +
+               "#### Readability and Maintainability\nNo issues found.\n\n" +
+               "#### Code Smells\nNo issues found.\n\n" +
+               "#### Educational Tips\nTry submitting smaller code samples for better performance.";
     }
-    
-    throw error;
-}
 
-/**
- * Send request to OpenAI API with timeout handling
- */
-async function requestAICompletion(prompt: string, isReport = false): Promise<string> {
-    // Choose model and max length based on the task
-    const model = isReport ? "gpt-4o" : "gpt-4o-mini";
-    const maxLength = isReport ? 16384 : 8192;
-    const timeoutMs = isReport ? 40000 : 25000;
-    
-    const truncatedPrompt = truncateContent(prompt, maxLength);
-    const systemMessage = isReport ? createReportSystemMessage() : createSystemMessage();
-    const fullPrompt = isReport 
-        ? `Create a comprehensive code review report for the following code:\n\n${truncatedPrompt}`
-        : `Review the following code:\n\n${truncatedPrompt}`;
-    
-    // Add a timeout for the API call
-    const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs/1000} seconds`)), timeoutMs);
-    });
+    /**
+     * Creates a comprehensive report fallback response for timeout scenarios
+     */
+    public static createReportTimeoutResponse(): string {
+        return "# Report Generation Timed Out\n\nThe report generation process took too long and timed out. This might be due to high server load or complexity of the code. Please try again later with a smaller code sample.";
+    }
 
-    // Create the API completion promise
-    const completionPromise = openai.chat.completions.create({
-        model: model,
-        messages: [
-            { role: "system", content: systemMessage },
-            { role: "user", content: fullPrompt },
-        ]
-    });
-
-    try {
-        // Race the promises to handle timeouts
-        const completion = await Promise.race([completionPromise, timeoutPromise]);
+    /**
+     * Handles API request timeout by generating and saving a fallback response
+     */
+    public static async handleTimeout(error: any, isReport = false): Promise<string> {
+        console.error(`AI response failed: ${error.message}`);
         
-        if (!completion) {
-            throw new Error('No response received from AI service');
+        if (error.message && error.message.includes('timed out')) {
+            const fallbackContent = isReport 
+                ? this.createReportTimeoutResponse() 
+                : this.createTimeoutResponse();
+            
+            // Generate appropriate file name for the fallback response
+            const prefix = isReport ? 'report-response-timeout' : 'response-timeout';
+            const extension = isReport ? '.md' : '.txt';
+            const fileName = FileManager.getTimestampedFilename(prefix, extension);
+            
+            // Save the fallback response
+            FileManager.saveToFile(fallbackContent, fileName);
+            console.log(`⚠️ Request timed out. Fallback response saved to: ${fileName}`);
+            
+            return fileName;
         }
+        
+        throw error;
+    }
+}
 
-        return completion.choices?.[0]?.message?.content ?? "No response from AI.";
-    } catch (error: any) {
-        // Handle timeouts and other errors
-        return handleTimeout(error, isReport);
+/**
+ * Manages requests to the OpenAI API
+ */
+class OpenAIService {
+    /**
+     * Truncates content if it exceeds maximum length
+     */
+    private static truncateContent(content: string, maxLength: number): string {
+        if (content.length <= maxLength) {
+            return content;
+        }
+        return content.slice(0, maxLength) + '\n\n[Content truncated due to length]';
+    }
+
+    /**
+     * Sends a request to OpenAI API with timeout handling
+     */
+    public static async requestCompletion(prompt: string, isReport = false): Promise<string> {
+        // Choose model and parameters based on the task
+        const model = isReport ? "gpt-4o" : "gpt-4o-mini";
+        const maxLength = isReport ? 16384 : 8192;
+        const timeoutMs = isReport ? 40000 : 25000;
+        
+        const truncatedPrompt = this.truncateContent(prompt, maxLength);
+        const systemMessage = isReport 
+            ? PromptTemplates.createReportPrompt() 
+            : PromptTemplates.createCodeReviewPrompt();
+            
+        const fullPrompt = isReport 
+            ? `Create a comprehensive code review report for the following code:\n\n${truncatedPrompt}`
+            : `Review the following code:\n\n${truncatedPrompt}`;
+        
+        // Add a timeout for the API call
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs/1000} seconds`)), timeoutMs);
+        });
+
+        // Create the API completion promise
+        const completionPromise = config.openai.chat.completions.create({
+            model: model,
+            messages: [
+                { role: "system", content: systemMessage },
+                { role: "user", content: fullPrompt },
+            ]
+        });
+
+        try {
+            // Race the promises to handle timeouts
+            const completion = await Promise.race([completionPromise, timeoutPromise]);
+            
+            if (!completion) {
+                throw new Error('No response received from AI service');
+            }
+
+            return completion.choices?.[0]?.message?.content ?? "No response from AI.";
+        } catch (error: any) {
+            // Handle timeouts and other errors
+            return FallbackResponses.handleTimeout(error, isReport);
+        }
     }
 }
 
@@ -364,7 +414,7 @@ async function requestAICompletion(prompt: string, isReport = false): Promise<st
 // ==============================
 
 /**
- * Main function to get AI response, save it, and return file path
+ * Gets an AI code review response for the provided code, saves it to file, and returns the file path
  */
 export async function getAIResponse(prompt: string): Promise<string> {
     try {
@@ -375,16 +425,16 @@ export async function getAIResponse(prompt: string): Promise<string> {
         }
         
         // Get response from AI
-        const response = await requestAICompletion(prompt, false);
+        const response = await OpenAIService.requestCompletion(prompt, false);
         
         // If the response is a file path (from timeout handling), return it
-        if (response.startsWith(responsesDir)) {
+        if (response.startsWith(config.responsesDir)) {
             return response;
         }
         
         // Otherwise, save the response to a file
-        const fileName = getTimestampedFilename();
-        saveToFile(response.trim(), fileName);
+        const fileName = FileManager.getTimestampedFilename();
+        FileManager.saveToFile(response.trim(), fileName);
         console.log(`✅ AI response saved to: ${fileName}`);
         
         return fileName;
@@ -395,7 +445,7 @@ export async function getAIResponse(prompt: string): Promise<string> {
 }
 
 /**
- * Generate a comprehensive report using GPT-4o and save it
+ * Generates a comprehensive report using GPT-4o and saves it to a markdown file
  */
 export async function generateReport(prompt: string): Promise<string> {
     try {
@@ -406,16 +456,16 @@ export async function generateReport(prompt: string): Promise<string> {
         }
         
         // Get report response from AI
-        const response = await requestAICompletion(prompt, true);
+        const response = await OpenAIService.requestCompletion(prompt, true);
         
         // If the response is a file path (from timeout handling), return it
-        if (response.startsWith(responsesDir)) {
+        if (response.startsWith(config.responsesDir)) {
             return response;
         }
         
         // Otherwise, save the response to a report file
-        const fileName = getTimestampedFilename('report-response', '.md');
-        saveToFile(response.trim(), fileName);
+        const fileName = FileManager.getTimestampedFilename('report-response', '.md');
+        FileManager.saveToFile(response.trim(), fileName);
         console.log(`📝 Report response saved to: ${fileName}`);
         
         return fileName;
@@ -430,51 +480,42 @@ export async function generateReport(prompt: string): Promise<string> {
 // ==============================
 
 /**
- * Convert a markdown file to HTML
+ * Handles conversion of markdown reports to formatted HTML
  */
-export async function convertMarkdownToHtml(markdownPath: string): Promise<string> {
-    try {
-        console.log(`Starting HTML conversion for: ${markdownPath}`);
+class MarkdownConverter {
+    /**
+     * Cleans up any text outside the main sections
+     */
+    public static cleanupExtraText(content: string): string {
+        // Extract the content between the first and last heading sections
+        const firstHeadingMatch = content.match(/^#+\s+.*$/m);
+        const lastHeadingMatch = content.match(/^#+\s+.*$(?![\s\S]*^#+\s+)/m);
         
-        // Read the markdown content
-        const markdownContent = fs.readFileSync(markdownPath, 'utf-8');
+        if (firstHeadingMatch && lastHeadingMatch) {
+            const firstHeadingIndex = content.indexOf(firstHeadingMatch[0]);
+            const lastHeadingContent = lastHeadingMatch[0];
+            const lastSectionContent = content.substring(content.indexOf(lastHeadingContent));
+            
+            // Find the end of the last section
+            const sections = lastSectionContent.split(/^#+\s+/m);
+            if (sections.length > 0) {
+                // Return just the content from first heading to the end of the last section
+                return content.substring(firstHeadingIndex);
+            }
+        }
         
-        // Create HTML filename
-        const htmlPath = markdownPath.replace('.md', '.html');
-        
-        // Process markdown content in a specific order to avoid formatting issues
-        
-        // 1. First, identify and convert code blocks to prevent them from interfering with other conversions
+        return content; // Return original if we couldn't find the pattern
+    }
+
+    /**
+     * Extracts code blocks and replaces them with placeholders
+     */
+    public static extractCodeBlocks(content: string): { processedContent: string, codeBlocks: {[key: string]: string} } {
         let codeBlocks: {[key: string]: string} = {};
         let codeBlockCounter = 0;
         
-        // Clean up any introductory or concluding text outside the main sections
-        const cleanupExtraText = (content: string): string => {
-            // Extract the content between the first and last heading sections
-            const firstHeadingMatch = content.match(/^#+\s+.*$/m);
-            const lastHeadingMatch = content.match(/^#+\s+.*$(?![\s\S]*^#+\s+)/m);
-            
-            if (firstHeadingMatch && lastHeadingMatch) {
-                const firstHeadingIndex = content.indexOf(firstHeadingMatch[0]);
-                const lastHeadingContent = lastHeadingMatch[0];
-                const lastSectionContent = content.substring(content.indexOf(lastHeadingContent));
-                
-                // Find the end of the last section
-                const sections = lastSectionContent.split(/^#+\s+/m);
-                if (sections.length > 0) {
-                    // Return just the content from first heading to the end of the last section
-                    return content.substring(firstHeadingIndex);
-                }
-            }
-            
-            return content; // Return original if we couldn't find the pattern
-        };
-
-        // Apply the cleanup to remove extra text
-        let processedContent = cleanupExtraText(markdownContent);
-        
         // Replace code blocks with placeholders to preserve them during conversion
-        processedContent = processedContent.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+        const processedContent = content.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
             const placeholder = `CODE_BLOCK_PLACEHOLDER_${codeBlockCounter}`;
             
             const language = lang || 'text';
@@ -505,33 +546,49 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
         
         console.log(`Extracted ${codeBlockCounter} code blocks from markdown`);
         
-        // 2. Convert markdown elements to HTML
-        
-        // Convert headers - promote heading levels (h3->h2) to match TOC expectations
-        processedContent = processedContent
+        return { processedContent, codeBlocks };
+    }
+
+    /**
+     * Converts markdown headers to HTML
+     */
+    public static convertHeaders(content: string): string {
+        return content
             .replace(/^# (.*$)/gm, '<h1>$1</h1>')
             .replace(/^## (.*$)/gm, '<h2>$1</h2>')
             .replace(/^### (.*$)/gm, '<h2>$1</h2>') // Convert ### to h2 instead of h3
             .replace(/^#### (.*$)/gm, '<h3>$1</h3>') // Adjust remaining header levels
             .replace(/^##### (.*$)/gm, '<h4>$1</h4>')
             .replace(/^###### (.*$)/gm, '<h5>$1</h5>');
-            
-        // Convert bold and italic
-        processedContent = processedContent
+    }
+
+    /**
+     * Converts markdown formatting (bold, italic) to HTML
+     */
+    public static convertFormatting(content: string): string {
+        return content
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/__(.*?)__/g, '<strong>$1</strong>')
             .replace(/_(.*?)_/g, '<em>$1</em>');
-        
-        // Convert inline code (do this before lists to avoid conflicts)
-        processedContent = processedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
-            
-        // Convert lists with proper grouping
+    }
+
+    /**
+     * Converts markdown inline code to HTML
+     */
+    public static convertInlineCode(content: string): string {
+        return content.replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+
+    /**
+     * Converts markdown lists to HTML
+     */
+    public static convertLists(content: string): string {
         let inList = false;
         let listContent = '';
         let htmlContentArray = [];
         
-        processedContent.split('\n').forEach(line => {
+        content.split('\n').forEach(line => {
             // Check if this is an actual list item (starts with * or -)
             if (line.match(/^\s*[\*\-]\s+(.*)$/)) {
                 // List item found
@@ -562,19 +619,17 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
             htmlContentArray.push(listContent);
         }
         
-        processedContent = htmlContentArray.join('\n');
-            
-        // 3. Handle paragraphs - update the regex to exclude code blocks
-        // Look for lines that:
-        // 1. Don't start with <
-        // 2. Don't contain CODE_BLOCK_PLACEHOLDER
-        // 3. Aren't empty
-        // First, process paragraphs in a way that preserves placeholders
-        const paragraphProcessedLines = processedContent.split('\n');
+        return htmlContentArray.join('\n');
+    }
+
+    /**
+     * Wraps non-HTML, non-placeholder text in paragraph tags
+     */
+    public static convertParagraphs(content: string): string {
+        const paragraphProcessedLines = content.split('\n');
         const processedLines = [];
         
         // Process line by line to better handle code blocks
-        let inCodeBlock = false;
         for (let i = 0; i < paragraphProcessedLines.length; i++) {
             const line = paragraphProcessedLines[i];
             
@@ -600,35 +655,29 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
             processedLines.push(`<p>${line}</p>`);
         }
         
-        processedContent = processedLines.join('\n');
-            
-        // Fix numbered list items outside ordered lists (like "1. Item")
-        processedContent = processedContent.replace(
+        return processedLines.join('\n');
+    }
+
+    /**
+     * Formats numbered list items that are outside ordered lists
+     */
+    public static formatNumberedItems(content: string): string {
+        return content.replace(
             /<p>\s*(\d+)\.\s+(.*?)<\/p>/g,
             '<p class="numbered-item"><span class="item-number">$1.</span> $2</p>'
         );
+    }
 
-        // 4. Restore code blocks - improved to catch all placeholder variants
+    /**
+     * Restores code blocks from their placeholders
+     */
+    public static restoreCodeBlocks(content: string, codeBlocks: {[key: string]: string}, codeBlockCounter: number): string {
+        let processedContent = content;
+        
+        // Debug logging to help diagnose placeholder issues
         console.log(`Starting to restore ${Object.keys(codeBlocks).length} code blocks`);
-
-        // Special debug logging to help diagnose issues
-        console.log('Placeholder patterns to look for:');
-        Object.keys(codeBlocks).forEach(placeholder => {
-            console.log(`- ${placeholder}`);
-            
-            // Check if this placeholder appears in the processed content
-            if (processedContent.includes(placeholder)) {
-                console.log(`  Found as plain text`);
-            } else if (processedContent.includes(`<p>${placeholder}</p>`)) {
-                console.log(`  Found wrapped in paragraph tags`);
-            } else if (processedContent.includes(placeholder.replace(/_/g, '<em>_</em>'))) {
-                console.log(`  Found with emphasized underscores`);
-            } else {
-                console.log(`  Not found in standard patterns - searching for variations`);
-            }
-        });
-
-        // First check for specific patterns from nested headers with code blocks
+        
+        // First check for specific patterns in sections with code blocks
         const h2BeforeRefactoringRegex = /<h2>.*?Before Refactoring.*?<\/h2>\s*<p>CODE[_<].*?PLACEHOLDER_(\d+).*?<\/p>/g;
         processedContent = processedContent.replace(h2BeforeRefactoringRegex, (match, placeholderNum) => {
             const placeholder = `CODE_BLOCK_PLACEHOLDER_${placeholderNum}`;
@@ -649,24 +698,24 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
             return match;
         });
 
-        // Use a direct pattern matching approach
+        // Use a pattern matching approach with variations for each placeholder
         for (let i = 0; i < codeBlockCounter; i++) {
             const placeholder = `CODE_BLOCK_PLACEHOLDER_${i}`;
-            // Create variations of the pattern we've seen
+            
+            // Create variations of the pattern we've seen in the wild
             const variations = [
                 placeholder,
                 `<p>${placeholder}</p>`,
                 `<p>  ${placeholder}</p>`,
                 `<p>${placeholder.replace(/_/g, '<em>_</em>')}</p>`,
                 `<p>  ${placeholder.replace(/_/g, '<em>_</em>')}</p>`,
-                // Match CODE<em>BLOCK</em>PLACEHOLDER pattern
                 `<p>CODE<em>BLOCK</em>PLACEHOLDER_${i}</p>`,
                 `CODE<em>BLOCK</em>PLACEHOLDER_${i}`,
                 `<p>CODE_BLOCK<em>PLACEHOLDER</em>_${i}</p>`,
                 `<p>CODE<em>_</em>BLOCK<em>_</em>PLACEHOLDER_${i}</p>`,
             ];
             
-            // Try each variation
+            // Try each variation for the placeholder
             variations.forEach(pattern => {
                 if (processedContent.includes(pattern)) {
                     console.log(`Found and replacing pattern: ${pattern}`);
@@ -674,29 +723,26 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
                 }
             });
             
-            // Last resort: use a flexible regex to match any form with the same placeholder number
+            // Last resort: flexible regex to match any form with the same placeholder number
             const flexRegex = new RegExp(`<p>(?:CODE)?(?:<em>)?[_]?(?:</em>)?(?:BLOCK)?(?:<em>)?[_]?(?:</em>)?PLACEHOLDER_${i}(?:\\s*|<em>.*?</em>|.*?)</p>`, 'g');
             processedContent = processedContent.replace(flexRegex, codeBlocks[placeholder]);
         }
-
-        // Then run the standard placeholder replacement
-        Object.keys(codeBlocks).forEach(placeholder => {
-            // ... existing replacement code ...
-        });
         
-        // Get paths for external files
-        const cssPath = path.resolve(__dirname, '../src/styles/report.css');
-        const scriptPath = path.resolve(__dirname, '../src/components/reportScript.js');
-        const templatePath = path.resolve(__dirname, '../src/templates/reportTemplate.html');
+        return processedContent;
+    }
 
-        // Read the template HTML
-        let templateHtml = '';
+    /**
+     * Reads and prepares template HTML, handling fallback if not found
+     */
+    public static getTemplateHtml(): string {
+        const templatePath = path.resolve(__dirname, '../src/templates/reportTemplate.html');
+        
         try {
-            templateHtml = fs.readFileSync(templatePath, 'utf-8');
+            return fs.readFileSync(templatePath, 'utf-8');
         } catch (error) {
             console.error(`Error reading template: ${error}`);
             // Fallback to inline template if the file doesn't exist
-            templateHtml = `
+            return `
             <!DOCTYPE html>
             <html lang="en">
             <head>
@@ -735,19 +781,27 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
             </body>
             </html>`;
         }
+    }
 
-        // Create the output directory for CSS and JS if needed
+    /**
+     * Prepares assets directory and copies necessary files
+     */
+    public static prepareAssets(htmlPath: string): { relativeCssPath: string, relativeJsPath: string } {
         const htmlDir = path.dirname(htmlPath);
         const assetsDir = path.join(htmlDir, 'assets');
+        
         if (!fs.existsSync(assetsDir)) {
             fs.mkdirSync(assetsDir, { recursive: true });
         }
-
-        // Copy the CSS and JS files to the output directory
+        
+        // Define paths for assets
+        const cssPath = path.resolve(__dirname, '../src/styles/report.css');
+        const scriptPath = path.resolve(__dirname, '../src/components/reportScript.js');
         const outputCssPath = path.join(assetsDir, 'report.css');
         const outputJsPath = path.join(assetsDir, 'report.js');
         
         try {
+            // Copy the CSS and JS files to the output directory
             fs.copyFileSync(cssPath, outputCssPath);
             fs.copyFileSync(scriptPath, outputJsPath);
         } catch (error) {
@@ -764,19 +818,59 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
                 fs.writeFileSync(outputJsPath, fs.readFileSync(path.resolve(__dirname, '../src/components/reportScript.js'), 'utf-8'));
             }
         }
-
+        
         // Calculate relative paths for the HTML file
         const relativeCssPath = path.relative(path.dirname(htmlPath), outputCssPath).replace(/\\/g, '/');
         const relativeJsPath = path.relative(path.dirname(htmlPath), outputJsPath).replace(/\\/g, '/');
+        
+        return { relativeCssPath, relativeJsPath };
+    }
+}
 
-        // Replace template placeholders
+/**
+ * Converts a markdown file to HTML
+ */
+export async function convertMarkdownToHtml(markdownPath: string): Promise<string> {
+    try {
+        console.log(`Starting HTML conversion for: ${markdownPath}`);
+        
+        // Read the markdown content
+        const markdownContent = fs.readFileSync(markdownPath, 'utf-8');
+        
+        // Create HTML filename
+        const htmlPath = markdownPath.replace('.md', '.html');
+        
+        // Process markdown in steps to maintain formatting integrity
+        
+        // 1. Clean up and extract code blocks
+        const cleanedContent = MarkdownConverter.cleanupExtraText(markdownContent);
+        const { processedContent: contentWithPlaceholders, codeBlocks } = MarkdownConverter.extractCodeBlocks(cleanedContent);
+        const codeBlockCounter = Object.keys(codeBlocks).length;
+        
+        // 2. Convert markdown to HTML in sequence
+        let processedContent = contentWithPlaceholders;
+        processedContent = MarkdownConverter.convertHeaders(processedContent);
+        processedContent = MarkdownConverter.convertFormatting(processedContent);
+        processedContent = MarkdownConverter.convertInlineCode(processedContent);
+        processedContent = MarkdownConverter.convertLists(processedContent);
+        processedContent = MarkdownConverter.convertParagraphs(processedContent);
+        processedContent = MarkdownConverter.formatNumberedItems(processedContent);
+        
+        // 3. Restore code blocks
+        processedContent = MarkdownConverter.restoreCodeBlocks(processedContent, codeBlocks, codeBlockCounter);
+        
+        // 4. Get HTML template and prepare assets
+        const templateHtml = MarkdownConverter.getTemplateHtml();
+        const { relativeCssPath, relativeJsPath } = MarkdownConverter.prepareAssets(htmlPath);
+        
+        // 5. Replace template placeholders
         const fullHtml = templateHtml
             .replace('{{cssPath}}', relativeCssPath)
             .replace('{{scriptPath}}', relativeJsPath)
             .replace('{{generationDate}}', new Date().toLocaleString())
             .replace('{{processedContent}}', processedContent);
         
-        // Write the HTML file
+        // 6. Write the HTML file
         fs.writeFileSync(htmlPath, fullHtml, 'utf-8');
         console.log(`HTML file created: ${htmlPath}`);
         
