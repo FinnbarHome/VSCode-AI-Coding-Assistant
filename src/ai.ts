@@ -1,3 +1,8 @@
+/**
+ * @deprecated This file has been refactored and the functionality moved to src/services/ai/*
+ * Import from './services/ai' instead.
+ */
+
 import OpenAI from 'openai';
 import * as dotenv from 'dotenv';
 import * as path from 'path';

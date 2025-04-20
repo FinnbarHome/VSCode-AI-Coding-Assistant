@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getAIResponse, generateReport, convertMarkdownToHtml } from './ai';
+import { getAIResponse, generateReport, convertMarkdownToHtml } from './services/ai';
 import * as fs from 'fs';
 import * as path from 'path';
 
