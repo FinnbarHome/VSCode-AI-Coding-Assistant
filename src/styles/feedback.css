@@ -1,4 +1,4 @@
-/* Collapsible Sections */
+
 .category {
     background: #252526;
     border: 1px solid #444;
@@ -17,14 +17,13 @@
     flex-shrink: 0;
 }
 
-/* Prevents width changes on expansion */
 .category[open] {
     width: 100%;
     max-width: 800px;
     min-width: 300px;
 }
 
-/* Centering the category title */
+
 .category summary {
     font-size: 18px;
     font-weight: bold;

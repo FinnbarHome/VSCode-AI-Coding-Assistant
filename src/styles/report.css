@@ -30,7 +30,6 @@ body {
     font-size: 16px;
 }
 
-/* Header styling */
 header {
     background: linear-gradient(135deg, var(--primary-color), #0056a3);
     color: white;
@@ -83,7 +82,6 @@ h2 {
     clear: both;
 }
 
-/* Section numbering */
 h2::before {
     margin-right: 10px;
     font-weight: bold;
@@ -117,7 +115,6 @@ h4 {
     margin-top: 1.5em;
 }
 
-/* Score indicators */
 .score-container {
     display: flex;
     align-items: center;
@@ -165,7 +162,6 @@ h4 {
     background: linear-gradient(135deg, var(--score-bad), #c0392b);
 }
 
-/* Lists */
 ul, ol {
     padding-left: 2em;
     margin: 1.2em 0;
@@ -187,17 +183,14 @@ ul > li::before {
     font-size: 1.2em;
 }
 
-/* Lists within lists should be more compact */
 li li {
     margin-bottom: 0.4em;
 }
 
-/* Prevent double spacing in lists */
 li p {
     margin: 0.25em 0;
 }
 
-/* Numbered items outside lists */
 .numbered-item {
     position: relative;
     padding-left: 1.5em;
@@ -211,7 +204,6 @@ li p {
     color: var(--secondary-color);
 }
 
-/* Additional list styling */
 ul, ol {
     padding-left: 2em;
     margin: 1em 0;
@@ -222,12 +214,10 @@ ul li, ol li {
     padding-left: 0.5em;
 }
 
-/* Fix spacing */
 li p {
     margin: 0.25em 0;
 }
 
-/* Improved code block styling */
 .code-block-wrapper {
     margin: 1.5em 0;
     border-radius: 6px;
@@ -303,19 +293,16 @@ code {
     font-size: 0.9em;
 }
 
-/* Syntax highlighting */
 .language-javascript .code-line, 
 .language-typescript .code-line,
 .language-css .code-line {
     color: #333;
 }
 
-/* CSS-specific highlighting */
 .language-css .code-line {
     color: #07a;
 }
 
-/* Code blocks */
 code {
     font-family: var(--font-mono);
     background: var(--light-gray);
@@ -324,7 +311,6 @@ code {
     font-size: 0.9em;
 }
 
-/* Tables */
 table {
     border-collapse: collapse;
     width: 100%;
@@ -355,7 +341,6 @@ tr:hover {
     background-color: rgba(0, 120, 215, 0.05);
 }
 
-/* Other elements */
 p {
     margin: 1.2em 0;
     line-height: 1.8;
@@ -379,7 +364,6 @@ strong {
     font-weight: 600;
 }
 
-/* Navigation */
 .toc {
     background: linear-gradient(to bottom, #f8f9fa, #f1f3f5);
     padding: 25px 30px;
@@ -458,7 +442,6 @@ strong {
     border-bottom: none;
 }
 
-/* Code block wrapper */
 .code-block-wrapper {
     margin: 1.8em 0;
     border-radius: var(--radius-md);
@@ -499,13 +482,11 @@ strong {
     transform: translateY(-1px);
 }
 
-/* Consistent spacing between sections */
 section {
     margin-bottom: 2.5em;
     padding-bottom: 1.5em;
 }
 
-/* Make spacing consistent for printing */
 @media print {
     h2 {
         page-break-before: always;
@@ -533,7 +514,6 @@ section {
     }
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
     body {
         padding: 15px;

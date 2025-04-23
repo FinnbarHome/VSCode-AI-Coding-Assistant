@@ -1,16 +1,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
-/**
- * Handles conversion of markdown reports to formatted HTML
- */
+// turns markdown reports into pretty HTML
 export class MarkdownConverter {
-    /**
-     * Finds the project root directory by looking for package.json
-     */
+    // finds project root by looking for package.json
     private static findProjectRoot(): string {
         let currentDir = __dirname;
-        // Navigate up until we find package.json (project root marker)
+        // go up dirs till we find package.json
         while (currentDir !== path.parse(currentDir).root) {
             if (fs.existsSync(path.join(currentDir, 'package.json'))) {
                 return currentDir;
@@ -19,15 +15,13 @@ export class MarkdownConverter {
         }
         
         console.warn('Could not find project root, using a relative path fallback');
-        // Fallback to 3 levels up from the current file if we can't find package.json
+        // fallback - go up 3 levels if no package.json
         return path.resolve(__dirname, '../../..');
     }
 
-    /**
-     * Cleans up any text outside the main sections
-     */
+    // removes junk text outside main sections
     public static cleanupExtraText(content: string): string {
-        // Extract the content between the first and last heading sections
+        // grab content between first and last headings
         const firstHeadingMatch = content.match(/^#+\s+.*$/m);
         const lastHeadingMatch = content.match(/^#+\s+.*$(?![\s\S]*^#+\s+)/m);
         
@@ -36,25 +30,23 @@ export class MarkdownConverter {
             const lastHeadingContent = lastHeadingMatch[0];
             const lastSectionContent = content.substring(content.indexOf(lastHeadingContent));
             
-            // Find the end of the last section
+            // find last section end
             const sections = lastSectionContent.split(/^#+\s+/m);
             if (sections.length > 0) {
-                // Return just the content from first heading to the end of the last section
+                // just get content from first heading to end of last section
                 return content.substring(firstHeadingIndex);
             }
         }
         
-        return content; // Return original if we couldn't find the pattern
+        return content; // keep original if pattern not found
     }
 
-    /**
-     * Extracts code blocks and replaces them with placeholders
-     */
+    // extracts code blocks & uses placeholders
     public static extractCodeBlocks(content: string): { processedContent: string, codeBlocks: {[key: string]: string} } {
         let codeBlocks: {[key: string]: string} = {};
         let codeBlockCounter = 0;
         
-        // Replace code blocks with placeholders to preserve them during conversion
+        // replace code blocks with placeholders
         const processedContent = content.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
             const placeholder = `CODE_BLOCK_PLACEHOLDER_${codeBlockCounter}`;
             
@@ -63,7 +55,7 @@ export class MarkdownConverter {
             let lineNumbers = '';
             let codeContent = '';
             
-            // Generate line numbers and code content
+            // make line nums and code content
             lines.forEach((line: string, index: number) => {
                 const lineNum = index + 1;
                 lineNumbers += `<span class="line-number">${lineNum}</span>\n`;
@@ -89,22 +81,18 @@ export class MarkdownConverter {
         return { processedContent, codeBlocks };
     }
 
-    /**
-     * Converts markdown headers to HTML
-     */
+    // converts md headers to HTML
     public static convertHeaders(content: string): string {
         return content
             .replace(/^# (.*$)/gm, '<h1>$1</h1>')
             .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-            .replace(/^### (.*$)/gm, '<h2>$1</h2>') // Convert ### to h2 instead of h3
-            .replace(/^#### (.*$)/gm, '<h3>$1</h3>') // Adjust remaining header levels
+            .replace(/^### (.*$)/gm, '<h2>$1</h2>') // treat ### as h2 too
+            .replace(/^#### (.*$)/gm, '<h3>$1</h3>') // adjust other levels
             .replace(/^##### (.*$)/gm, '<h4>$1</h4>')
             .replace(/^###### (.*$)/gm, '<h5>$1</h5>');
     }
 
-    /**
-     * Converts markdown formatting (bold, italic) to HTML
-     */
+    // converts md format (bold/italic) to HTML
     public static convertFormatting(content: string): string {
         return content
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -113,38 +101,34 @@ export class MarkdownConverter {
             .replace(/_(.*?)_/g, '<em>$1</em>');
     }
 
-    /**
-     * Converts markdown inline code to HTML
-     */
+    // converts inline code to HTML
     public static convertInlineCode(content: string): string {
         return content.replace(/`([^`]+)`/g, '<code>$1</code>');
     }
 
-    /**
-     * Converts markdown lists to HTML
-     */
+    // converts md lists to HTML
     public static convertLists(content: string): string {
         let inList = false;
         let listContent = '';
         let htmlContentArray = [];
         
         content.split('\n').forEach(line => {
-            // Check if this is an actual list item (starts with * or -)
+            // check if list item (starts with * or -)
             if (line.match(/^\s*[\*\-]\s+(.*)$/)) {
-                // List item found
+                // found one
                 if (!inList) {
                     inList = true;
                     listContent = '<ul>\n';
                 }
                 
-                // Extract the content part (removing the bullet)
+                // grab content (minus bullet)
                 const content = line.replace(/^\s*[\*\-]\s+(.*)$/, '$1');
-                // Don't wrap list content in paragraph tags
+                // no paragraph tags for list items
                 listContent += `<li>${content}</li>\n`;
             } else {
-                // Not a list item
+                // not a list item
                 if (inList) {
-                    // End the current list
+                    // end list
                     listContent += '</ul>';
                     htmlContentArray.push(listContent);
                     inList = false;
@@ -153,7 +137,7 @@ export class MarkdownConverter {
             }
         });
         
-        // Close any open list
+        // close any open list
         if (inList) {
             listContent += '</ul>';
             htmlContentArray.push(listContent);
@@ -162,45 +146,41 @@ export class MarkdownConverter {
         return htmlContentArray.join('\n');
     }
 
-    /**
-     * Wraps non-HTML, non-placeholder text in paragraph tags
-     */
+    // wraps regular text in <p> tags
     public static convertParagraphs(content: string): string {
         const paragraphProcessedLines = content.split('\n');
         const processedLines = [];
         
-        // Process line by line to better handle code blocks
+        // go line by line for code blocks
         for (let i = 0; i < paragraphProcessedLines.length; i++) {
             const line = paragraphProcessedLines[i];
             
-            // Check if this line contains a code block placeholder
+            // skip code placeholders
             if (line.includes('CODE_BLOCK_PLACEHOLDER')) {
                 processedLines.push(line);
                 continue;
             }
             
-            // Skip empty lines
+            // skip empty lines
             if (!line.trim()) {
                 processedLines.push(line);
                 continue;
             }
             
-            // Skip lines that already start with HTML
+            // skip existing HTML
             if (line.trim().startsWith('<')) {
                 processedLines.push(line);
                 continue;
             }
             
-            // Wrap non-HTML, non-placeholder lines in paragraph tags
+            // wrap normal lines in paragraph tags
             processedLines.push(`<p>${line}</p>`);
         }
         
         return processedLines.join('\n');
     }
 
-    /**
-     * Formats numbered list items that are outside ordered lists
-     */
+    // formats numbered items outside lists
     public static formatNumberedItems(content: string): string {
         return content.replace(
             /<p>\s*(\d+)\.\s+(.*?)<\/p>/g,
@@ -208,16 +188,14 @@ export class MarkdownConverter {
         );
     }
 
-    /**
-     * Restores code blocks from their placeholders
-     */
+    // puts code blocks back from placeholders
     public static restoreCodeBlocks(content: string, codeBlocks: {[key: string]: string}, codeBlockCounter: number): string {
         let processedContent = content;
         
-        // Debug logging to help diagnose placeholder issues
+        // debug log
         console.log(`Starting to restore ${Object.keys(codeBlocks).length} code blocks`);
         
-        // First check for specific patterns in sections with code blocks
+        // check for refactoring sections with code blocks
         const h2BeforeRefactoringRegex = /<h2>.*?Before Refactoring.*?<\/h2>\s*<p>CODE[_<].*?PLACEHOLDER_(\d+).*?<\/p>/g;
         processedContent = processedContent.replace(h2BeforeRefactoringRegex, (match, placeholderNum) => {
             const placeholder = `CODE_BLOCK_PLACEHOLDER_${placeholderNum}`;
@@ -238,11 +216,11 @@ export class MarkdownConverter {
             return match;
         });
 
-        // Use a pattern matching approach with variations for each placeholder
+        // try different patterns for each placeholder
         for (let i = 0; i < codeBlockCounter; i++) {
             const placeholder = `CODE_BLOCK_PLACEHOLDER_${i}`;
             
-            // Create variations of the pattern we've seen in the wild
+            // patterns we've seen break in the wild
             const variations = [
                 placeholder,
                 `<p>${placeholder}</p>`,
@@ -255,7 +233,7 @@ export class MarkdownConverter {
                 `<p>CODE<em>_</em>BLOCK<em>_</em>PLACEHOLDER_${i}</p>`,
             ];
             
-            // Try each variation for the placeholder
+            // try each pattern
             variations.forEach(pattern => {
                 if (processedContent.includes(pattern)) {
                     console.log(`Found and replacing pattern: ${pattern}`);
@@ -263,7 +241,7 @@ export class MarkdownConverter {
                 }
             });
             
-            // Last resort: flexible regex to match any form with the same placeholder number
+            // last chance - flexible regex
             const flexRegex = new RegExp(`<p>(?:CODE)?(?:<em>)?[_]?(?:</em>)?(?:BLOCK)?(?:<em>)?[_]?(?:</em>)?PLACEHOLDER_${i}(?:\\s*|<em>.*?</em>|.*?)</p>`, 'g');
             processedContent = processedContent.replace(flexRegex, codeBlocks[placeholder]);
         }
@@ -271,9 +249,7 @@ export class MarkdownConverter {
         return processedContent;
     }
 
-    /**
-     * Reads and prepares template HTML, handling fallback if not found
-     */
+    // gets HTML template, with fallback
     public static getTemplateHtml(): string {
         const projectRoot = this.findProjectRoot();
         const templatePath = path.join(projectRoot, 'src', 'templates', 'reportTemplate.html');
@@ -283,7 +259,7 @@ export class MarkdownConverter {
             return fs.readFileSync(templatePath, 'utf-8');
         } catch (error) {
             console.error(`Error reading template: ${error}`);
-            // Fallback to inline template if the file doesn't exist
+            // inline template fallback if file not found
             return `
             <!DOCTYPE html>
             <html lang="en">
@@ -325,9 +301,7 @@ export class MarkdownConverter {
         }
     }
 
-    /**
-     * Prepares assets directory and copies necessary files
-     */
+    // sets up assets dir & copies files
     public static prepareAssets(htmlPath: string): { relativeCssPath: string, relativeJsPath: string } {
         const htmlDir = path.dirname(htmlPath);
         const assetsDir = path.join(htmlDir, 'assets');
@@ -336,7 +310,7 @@ export class MarkdownConverter {
             fs.mkdirSync(assetsDir, { recursive: true });
         }
         
-        // Use project root to find asset files
+        // find asset files from project root
         const projectRoot = this.findProjectRoot();
         const cssPath = path.join(projectRoot, 'src', 'styles', 'report.css');
         const scriptPath = path.join(projectRoot, 'src', 'components', 'reportScript.js');
@@ -347,39 +321,39 @@ export class MarkdownConverter {
         console.log(`Looking for JS at: ${scriptPath}`);
         
         try {
-            // Copy the CSS and JS files to the output directory
+            // copy CSS/JS to output dir
             fs.copyFileSync(cssPath, outputCssPath);
             fs.copyFileSync(scriptPath, outputJsPath);
         } catch (error) {
             console.error(`Error copying assets: ${error}`);
             
-            // If files don't exist, create them with the content from our code
+            // file not found? create with defaults
             if (!fs.existsSync(outputCssPath)) {
-                // Create CSS file with default styles
+                // try one more CSS path
                 const fallbackCssPath = path.join(projectRoot, 'src', 'styles', 'report.css');
                 if (fs.existsSync(fallbackCssPath)) {
                     fs.writeFileSync(outputCssPath, fs.readFileSync(fallbackCssPath, 'utf-8'));
                 } else {
                     console.error(`Could not find CSS at ${fallbackCssPath}`);
-                    // Create a minimal CSS file
+                    // minimal CSS
                     fs.writeFileSync(outputCssPath, `body { font-family: Arial, sans-serif; }`);
                 }
             }
             
             if (!fs.existsSync(outputJsPath)) {
-                // Create JS file with default script
+                // try one more JS path
                 const fallbackJsPath = path.join(projectRoot, 'src', 'components', 'reportScript.js');
                 if (fs.existsSync(fallbackJsPath)) {
                     fs.writeFileSync(outputJsPath, fs.readFileSync(fallbackJsPath, 'utf-8'));
                 } else {
                     console.error(`Could not find JS at ${fallbackJsPath}`);
-                    // Create a minimal JS file
+                    // minimal JS
                     fs.writeFileSync(outputJsPath, `console.log('Report loaded');`);
                 }
             }
         }
         
-        // Calculate relative paths for the HTML file
+        // make relative paths for HTML file
         const relativeCssPath = path.relative(path.dirname(htmlPath), outputCssPath).replace(/\\/g, '/');
         const relativeJsPath = path.relative(path.dirname(htmlPath), outputJsPath).replace(/\\/g, '/');
         
@@ -387,27 +361,25 @@ export class MarkdownConverter {
     }
 }
 
-/**
- * Converts a markdown file to HTML using the MarkdownConverter
- */
+// converts md file to HTML
 export async function convertMarkdownToHtml(markdownPath: string): Promise<string> {
     try {
         console.log(`Starting HTML conversion for: ${markdownPath}`);
         
-        // Read the markdown content
+        // read markdown
         const markdownContent = fs.readFileSync(markdownPath, 'utf-8');
         
-        // Create HTML filename
+        // make HTML filename
         const htmlPath = markdownPath.replace('.md', '.html');
         
-        // Process markdown in steps to maintain formatting integrity
+        // process in steps to keep formatting
         
-        // 1. Clean up and extract code blocks
+        // 1. cleanup & extract code blocks
         const cleanedContent = MarkdownConverter.cleanupExtraText(markdownContent);
         const { processedContent: contentWithPlaceholders, codeBlocks } = MarkdownConverter.extractCodeBlocks(cleanedContent);
         const codeBlockCounter = Object.keys(codeBlocks).length;
         
-        // 2. Convert markdown to HTML in sequence
+        // 2. convert md -> HTML in sequence
         let processedContent = contentWithPlaceholders;
         processedContent = MarkdownConverter.convertHeaders(processedContent);
         processedContent = MarkdownConverter.convertFormatting(processedContent);
@@ -416,21 +388,21 @@ export async function convertMarkdownToHtml(markdownPath: string): Promise<strin
         processedContent = MarkdownConverter.convertParagraphs(processedContent);
         processedContent = MarkdownConverter.formatNumberedItems(processedContent);
         
-        // 3. Restore code blocks
+        // 3. put code blocks back
         processedContent = MarkdownConverter.restoreCodeBlocks(processedContent, codeBlocks, codeBlockCounter);
         
-        // 4. Get HTML template and prepare assets
+        // 4. get template & assets
         const templateHtml = MarkdownConverter.getTemplateHtml();
         const { relativeCssPath, relativeJsPath } = MarkdownConverter.prepareAssets(htmlPath);
         
-        // 5. Replace template placeholders
+        // 5. fill in template
         const fullHtml = templateHtml
             .replace('{{cssPath}}', relativeCssPath)
             .replace('{{scriptPath}}', relativeJsPath)
             .replace('{{generationDate}}', new Date().toLocaleString())
             .replace('{{processedContent}}', processedContent);
         
-        // 6. Write the HTML file
+        // 6. write HTML file
         fs.writeFileSync(htmlPath, fullHtml, 'utf-8');
         console.log(`HTML file created: ${htmlPath}`);
         

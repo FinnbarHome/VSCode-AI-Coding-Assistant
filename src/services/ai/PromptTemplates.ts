@@ -1,10 +1,9 @@
-/**
- * Provides templates for AI system prompts
- */
+
+// provides templates for AI system prompts
+
 export class PromptTemplates {
-    /**
-     * Creates the system message for standard code review
-     */
+    // creates the system message for standard code review
+
     public static createCodeReviewPrompt(): string {
         return `You are a strict AI code reviewer. Your response **must be structured into exactly 10 sections** using the format below:
 
@@ -47,9 +46,9 @@ export class PromptTemplates {
             - ✅ Use appropriate language tags in code blocks (e.g., \`\`\`typescript, \`\`\`javascript, etc.)`;
     }
 
-    /**
-     * Creates the system message for comprehensive reports
-     */
+    
+    // creates the system message for comprehensive reports
+    
     public static createReportPrompt(): string {
         return `You are a senior code reviewer creating a comprehensive, formal code analysis report.
     Your analysis should be extremely thorough, professional, and educational - suitable for enterprise documentation.

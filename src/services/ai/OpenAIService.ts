@@ -2,13 +2,9 @@ import { config } from './ApiConfig';
 import { PromptTemplates } from './PromptTemplates';
 import { FallbackResponses } from './FallbackResponses';
 
-/**
- * Manages requests to the OpenAI API
- */
+// handles OpenAI API calls
 export class OpenAIService {
-    /**
-     * Truncates content if it exceeds maximum length
-     */
+    // cuts content if too long
     private static truncateContent(content: string, maxLength: number): string {
         if (content.length <= maxLength) {
             return content;
@@ -16,11 +12,9 @@ export class OpenAIService {
         return content.slice(0, maxLength) + '\n\n[Content truncated due to length]';
     }
 
-    /**
-     * Sends a request to OpenAI API with timeout handling
-     */
+    // sends req to API with timeout
     public static async requestCompletion(prompt: string, isReport = false): Promise<string> {
-        // Choose model and parameters based on the task
+        // pick model based on task
         const model = isReport ? "gpt-4o" : "gpt-4o-mini";
         const maxLength = isReport ? 16384 : 8192;
         const timeoutMs = isReport ? 40000 : 25000;
@@ -34,12 +28,12 @@ export class OpenAIService {
             ? `Create a comprehensive code review report for the following code:\n\n${truncatedPrompt}`
             : `Review the following code:\n\n${truncatedPrompt}`;
         
-        // Add a timeout for the API call
+        // add timeout
         const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error(`Request timed out after ${timeoutMs/1000} seconds`)), timeoutMs);
         });
 
-        // Create the API completion promise
+        // create API call
         const completionPromise = config.openai.chat.completions.create({
             model: model,
             messages: [
@@ -49,7 +43,7 @@ export class OpenAIService {
         });
 
         try {
-            // Race the promises to handle timeouts
+            // race promises for timeout
             const completion = await Promise.race([completionPromise, timeoutPromise]);
             
             if (!completion) {
@@ -58,7 +52,7 @@ export class OpenAIService {
 
             return completion.choices?.[0]?.message?.content ?? "No response from AI.";
         } catch (error: any) {
-            // Handle timeouts and other errors
+            // handle errors
             return FallbackResponses.handleTimeout(error, isReport);
         }
     }

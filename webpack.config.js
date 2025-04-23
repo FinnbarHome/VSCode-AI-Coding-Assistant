@@ -1,7 +1,6 @@
 const path = require('path');
 
 module.exports = [
-    // Webview Configuration (React)
     {
         mode: 'development',
         entry: {
@@ -20,7 +19,7 @@ module.exports = [
                     use: 'ts-loader'
                 },
                 {
-                    test: /\.css$/, // <-- CSS Loader Added
+                    test: /\.css$/, 
                     use: ['style-loader', 'css-loader'],
                 }
             ]
@@ -31,8 +30,6 @@ module.exports = [
         target: 'web',
         devtool: false
     },
-
-    // Extension Configuration (VSCode backend)
     {
         mode: 'development',
         entry: {

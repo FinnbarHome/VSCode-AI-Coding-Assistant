@@ -1,12 +1,8 @@
 import { FileManager } from './FileManager';
 
-/**
- * Handles error and timeout fallback responses
- */
+// handles error & timeout fallbacks
 export class FallbackResponses {
-    /**
-     * Creates a standard fallback response for timeout scenarios
-     */
+    // creates basic timeout response
     public static createTimeoutResponse(): string {
         return "#### Serious Problems\nRequest timed out. Please try again with a smaller code sample.\n\n" +
                "#### Warnings\nNo issues found.\n\n" +
@@ -20,16 +16,12 @@ export class FallbackResponses {
                "#### Educational Tips\nTry submitting smaller code samples for better performance.";
     }
 
-    /**
-     * Creates a comprehensive report fallback response for timeout scenarios
-     */
+    // creates fancier report timeout response
     public static createReportTimeoutResponse(): string {
         return "# Report Generation Timed Out\n\nThe report generation process took too long and timed out. This might be due to high server load or complexity of the code. Please try again later with a smaller code sample.";
     }
 
-    /**
-     * Handles API request timeout by generating and saving a fallback response
-     */
+    // saves fallback response when API times out
     public static async handleTimeout(error: any, isReport = false): Promise<string> {
         console.error(`AI response failed: ${error.message}`);
         
@@ -38,12 +30,12 @@ export class FallbackResponses {
                 ? this.createReportTimeoutResponse() 
                 : this.createTimeoutResponse();
             
-            // Generate appropriate file name for the fallback response
+            // pick appropriate filename
             const prefix = isReport ? 'report-response-timeout' : 'response-timeout';
             const extension = isReport ? '.md' : '.txt';
             const fileName = FileManager.getTimestampedFilename(prefix, extension);
             
-            // Save the fallback response
+            // save fallback
             FileManager.saveToFile(fallbackContent, fileName);
             console.log(`⚠️ Request timed out. Fallback response saved to: ${fileName}`);
             

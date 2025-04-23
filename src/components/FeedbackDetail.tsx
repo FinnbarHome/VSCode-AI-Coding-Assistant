@@ -23,9 +23,9 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
         }
     };
 
-    // Format content as bullet points if it contains multiple items
+    // make bullets if multi-item
     const formatContent = () => {
-        // Check if content is empty or "No issues found"
+        // empty or "no issues"?
         if (!content || content.toLowerCase().includes('no issues found')) {
             return (
                 <div className="feedback-empty">
@@ -35,7 +35,7 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
             );
         }
 
-        // Split content into bullet points
+        // split into bullet points
         const bulletPoints = splitIntoBulletPoints(content);
         
         if (bulletPoints.length > 1) {
@@ -55,7 +55,7 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
             );
         }
         
-        // If only one item, display without list
+        // just one item - no list
         return (
             <div className="single-item">
                 <span className="list-item-icon">{getItemIcon(type)}</span>
@@ -66,11 +66,11 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
         );
     };
 
-    // Format text that may contain code blocks
+    // handle text w/ code blocks
     const formatTextWithCode = (text: string) => {
-        // Check if the text contains code blocks
+        // no code blocks?
         if (!text.includes('```')) {
-            // Check if the text contains nested section headers
+            // check for nested sections
             if (text.match(/\n#{1,4}\s+/)) {
                 return formatNestedSections(text);
             }
@@ -78,29 +78,28 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
         }
 
         try {
-            // Improved regex to better match code blocks with language tags
-            // This handles both inline and multi-line code blocks
+            // regex for code blocks + lang tags
             const codeBlockRegex = /(```[\w]*[\s\S]*?```)/g;
             const parts = text.split(codeBlockRegex).filter(part => part.trim().length > 0);
             
             return parts.map((part, index) => {
-                // Check if this part contains a nested section header
+                // nested section?
                 if (part.match(/\n#{1,4}\s+/)) {
                     return formatNestedSections(part);
                 }
                 
                 if (part.startsWith('```')) {
                     try {
-                        // Extract language and code with improved regex
+                        // extract lang and code
                         const match = part.match(/```([\w]*)\n?([\s\S]*?)```/);
                         if (match) {
                             const [, language, code] = match;
                             const displayLanguage = language || 'text';
                             
-                            // Clean up the code by removing extra whitespace
+                            // clean up code
                             const cleanedCode = code.trim()
-                                .replace(/^\s+/gm, (m) => m.replace(/\s/g, ' ')) // Replace leading tabs/spaces with single spaces
-                                .replace(/\n{3,}/g, '\n\n'); // Replace multiple newlines with double newlines
+                                .replace(/^\s+/gm, (m) => m.replace(/\s/g, ' ')) // fix indents
+                                .replace(/\n{3,}/g, '\n\n'); // fix extra newlines
                             
                             return (
                                 <div key={index} className="code-snippet">
@@ -114,18 +113,18 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
                             );
                         }
                         
-                        // If regex didn't match but it starts with ```, try a simpler approach
+                        // regex didn't work - try plan B
                         const lines = part.split('\n');
                         const firstLine = lines[0].trim();
                         
-                        // Extract language from first line
+                        // get lang from first line
                         const langMatch = firstLine.match(/^```([\w]*)/);
                         const language = langMatch ? langMatch[1] : '';
                         
-                        // Extract code (everything between first and last line)
+                        // get code between first/last line
                         let codeContent = '';
                         if (lines.length > 1) {
-                            // Remove first line (```language) and last line (```)
+                            // skip first/last lines
                             const lastLineIndex = lines[lines.length - 1].trim() === '```' ? lines.length - 1 : lines.length;
                             codeContent = lines.slice(1, lastLineIndex).join('\n');
                         }
@@ -141,7 +140,7 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
                             </div>
                         );
                     } catch (error) {
-                        // If there's an error parsing the code block, just display it as text
+                        // parsing failed - just show text
                         console.error("Error parsing code block:", error);
                         return <span key={index}>{part}</span>;
                     }
@@ -149,41 +148,41 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
                 return <span key={index}>{part}</span>;
             });
         } catch (error) {
-            // If there's an error with the regex or splitting, just return the original text
+            // regex failed - use plain text
             console.error("Error formatting code:", error);
             return <span>{text}</span>;
         }
     };
     
-    // Format text with nested section headers
+    // handle nested section headers
     const formatNestedSections = (text: string) => {
-        // First, check if this is a Refactoring Suggestions section with nested content
+        // special case: refactoring w/ before/after sections
         const isRefactoringSuggestion = category === "Refactoring Suggestions" && text.includes("####");
         
-        // If it's a Refactoring Suggestion with nested content, handle it specially
+        // handle refactoring specially
         if (isRefactoringSuggestion) {
-            // Extract the main bullet points before any nested sections
+            // get intro content
             const mainContent = text.split(/\n#{1,4}\s+/)[0].trim();
             
-            // Extract all nested sections
+            // get all sections
             const nestedSections = text.match(/\n#{1,4}\s+.+(?:\n(?!#{1,4}\s+).+)*/g) || [];
             
             return (
                 <div className="nested-sections">
-                    {/* Render the main content first if it exists */}
+                    {/* main content first */}
                     {mainContent && (
                         <div className="nested-content">
                             {formatTextWithCode(mainContent)}
                         </div>
                     )}
                     
-                    {/* Render each nested section */}
+                    {/* then each section */}
                     {nestedSections.map((section, index) => {
                         const headerMatch = section.match(/\n#{1,4}\s+(.+)$/m);
                         const headerText = headerMatch ? headerMatch[1].trim() : `Section ${index + 1}`;
                         const headerLevel = (section.match(/\n(#{1,4})\s+/) || ['', '#'])[1].length;
                         
-                        // Get the content after the header
+                        // content after header
                         const sectionContent = section.replace(/\n#{1,4}\s+.+\n/m, '').trim();
                         
                         return (
@@ -201,14 +200,14 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
             );
         }
         
-        // For regular nested sections (not Refactoring Suggestions)
-        // Split the text by section headers
+        // for normal sections (not refactoring)
+        // split by headers
         const parts = text.split(/\n(#{1,4}\s+.*)/g);
         
         return (
             <div className="nested-sections">
                 {parts.map((part, index) => {
-                    // Check if this part is a section header
+                    // section header?
                     if (part.match(/^#{1,4}\s+/)) {
                         const headerLevel = (part.match(/^(#{1,4})\s+/) || ['', '#'])[1].length;
                         const headerText = part.replace(/^#{1,4}\s+/, '');
@@ -220,7 +219,7 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
                         );
                     }
                     
-                    // Check if this part contains code blocks
+                    // has code blocks?
                     if (part.includes('```')) {
                         return <div key={index}>{formatTextWithCode(part)}</div>;
                     }
@@ -231,33 +230,33 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
         );
     };
     
-    // Helper function to split content into bullet points
+    // split text into bullet points
     const splitIntoBulletPoints = (text: string): string[] => {
-        // If the text contains code blocks, we need to handle them carefully
+        // handle code blocks carefully
         if (text.includes('```')) {
-            // First, check if the text already contains bullet points
+            // already has bullets?
             if (text.match(/^[-•*]\s+/m) || text.match(/^\d+\.\s+/m)) {
-                // Split by newlines but preserve code blocks
+                // split by lines but keep code blocks together
                 const lines = text.split('\n');
                 const bulletPoints: string[] = [];
                 let currentPoint = '';
                 let inCodeBlock = false;
                 
                 for (const line of lines) {
-                    // Toggle code block state
+                    // toggle code block state
                     if (line.trim().startsWith('```')) {
                         inCodeBlock = !inCodeBlock;
                         currentPoint += line + '\n';
                         continue;
                     }
                     
-                    // If in code block, add to current point
+                    // in code block? add to current point
                     if (inCodeBlock) {
                         currentPoint += line + '\n';
                         continue;
                     }
                     
-                    // Check if this is a new bullet point
+                    // new bullet?
                     if ((line.trim().match(/^[-•*]\s+/) || line.trim().match(/^\d+\.\s+/)) && currentPoint) {
                         bulletPoints.push(currentPoint.trim());
                         currentPoint = line + '\n';
@@ -266,7 +265,7 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
                     }
                 }
                 
-                // Add the last point if any
+                // add last point
                 if (currentPoint.trim()) {
                     bulletPoints.push(currentPoint.trim());
                 }
@@ -275,22 +274,22 @@ const FeedbackDetail: React.FC<FeedbackDetailProps> = ({
             }
         }
         
-        // If the text already contains bullet points (- or numbers)
+        // already has bullets?
         if (text.match(/^[-•*]\s+/m) || text.match(/^\d+\.\s+/m)) {
             return text.split(/\n+/).filter(line => line.trim().length > 0);
         }
         
-        // Otherwise split by periods, but be careful with abbreviations and numbers
+        // split by periods (careful with abbrev/nums)
         const points = text.split(/\.(?=\s|$)/).filter(s => s.trim().length > 0);
         return points.map(p => p.trim() + (p.endsWith('.') ? '' : '.'));
     };
     
-    // Get appropriate icon for list items
+    // get appropriate item icon
     const getItemIcon = (itemType: string) => {
         switch (itemType) {
-            case 'error': return '🔴'; // Red circle for errors
-            case 'warning': return '🟠'; // Orange circle for warnings
-            default: return '🔵'; // Blue circle for info
+            case 'error': return '🔴'; // red for errors
+            case 'warning': return '🟠'; // orange for warnings
+            default: return '🔵'; // blue for info
         }
     };
 

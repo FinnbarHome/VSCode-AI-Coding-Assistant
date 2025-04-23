@@ -3,9 +3,9 @@ import { getAIResponse, generateReport, convertMarkdownToHtml } from './services
 import * as fs from 'fs';
 import * as path from 'path';
 
-const MAX_RETRIES = 3; // Avoid infinite loops
+const MAX_RETRIES = 3; // prevent infinite loops
 
-// Constants
+// file types we support
 const SUPPORTED_EXTENSIONS = ['.js', '.ts', '.cpp', '.c', '.java', '.py', '.cs', '.json', '.html', '.css', '.md'];
 const DEFAULT_CATEGORIES = [
             "Serious Problems",
@@ -20,7 +20,7 @@ const DEFAULT_CATEGORIES = [
             "Educational Tips"
         ];
         
-// Helper functions
+// helper funcs
 function getShortFileName(filePath: string): string {
     return filePath.split(/[\\/]/).pop() || 'Unknown File';
 }
@@ -41,28 +41,28 @@ function getCategoryType(category: string): 'error' | 'warning' | 'info' {
 function extractBulletPointsWithCodeBlocks(content: string): string[] {
         const bulletPoints: string[] = [];
         
-        // Check if content is empty
+        // empty check
         if (!content.trim()) {return bulletPoints;}
         
-        // Split content into lines for processing
+        // split into lines
         const lines = content.split('\n');
         let currentBullet: string | null = null;
         let inCodeBlock = false;
         let currentCodeBlock = '';
         
-        // Process each line
+        // go thru each line
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             
-            // Check for code block markers
+            // code block markers
             if (line.startsWith('```')) {
                 inCodeBlock = !inCodeBlock;
                 
-                // Add the code block marker to the current bullet
+                // add marker to current bullet
                 if (currentBullet !== null) {
                     currentBullet += '\n' + line;
                     
-                    // If we're closing a code block, add any accumulated code
+                    // closing a code block
                     if (!inCodeBlock && currentCodeBlock) {
                         currentCodeBlock = '';
                     }
@@ -70,7 +70,7 @@ function extractBulletPointsWithCodeBlocks(content: string): string[] {
                 continue;
             }
             
-            // If we're in a code block, add the line to the current bullet
+            // inside code block
             if (inCodeBlock) {
                 currentCodeBlock += line + '\n';
                 if (currentBullet !== null) {
@@ -79,24 +79,24 @@ function extractBulletPointsWithCodeBlocks(content: string): string[] {
                 continue;
             }
             
-            // Check for bullet points (numbered or with symbols)
+            // look for bullet points
             const bulletMatch = line.match(/^(\d+\.|[-*•])\s+(.+)$/);
             
             if (bulletMatch) {
-                // If we already have a bullet point, add it to the list
+                // got a bullet already? add it
                 if (currentBullet !== null) {
                     bulletPoints.push(currentBullet);
                 }
                 
-                // Start a new bullet point
+                // start new bullet
                 currentBullet = bulletMatch[2];
             } else if (currentBullet !== null && line) {
-                // Continue the current bullet point
+                // continue current bullet
                 currentBullet += '\n' + line;
             }
         }
         
-        // Add the last bullet point if there is one
+        // add last bullet if exists
         if (currentBullet !== null) {
             bulletPoints.push(currentBullet);
         }
@@ -105,26 +105,25 @@ function extractBulletPointsWithCodeBlocks(content: string): string[] {
     }
 
 function parseAIResponse(response: string): Record<string, string[]> {
-    // Initialize with all required categories
+    // init with all categories
     const parsedData: Record<string, string[]> = {};
     DEFAULT_CATEGORIES.forEach(category => {
         parsedData[category] = [];
     });
     
-    // Check if response is empty or invalid
+    // empty/invalid check
     if (!response || response.trim().length === 0) {
         console.warn("Empty AI response received");
         return parsedData;
     }
     
-    // First, normalize the response by removing excessive whitespace at the beginning of lines
-    // and normalizing line endings to \n
+    // clean up response - fix whitespace & line endings
     const normalizedResponse = response
-        .replace(/\r\n/g, '\n')  // Normalize Windows line endings
+        .replace(/\r\n/g, '\n')  // fix windows line endings
         .replace(/^\s+/gm, '')
         .trim();
     
-    // Split the response by main section headers
+    // split by section headers
     const sectionRegex = /####\s+([^\n]+)/g;
     let match;
     let lastIndex = 0;
@@ -135,50 +134,50 @@ function parseAIResponse(response: string): Record<string, string[]> {
         const headerEnd = match.index + match[0].length;
         const sectionName = match[1].trim();
         
-        // If this isn't the first match, extract the content of the previous section
+        // not first match? get prev section content
         if (lastIndex > 0) {
             const sectionContent = normalizedResponse.substring(lastIndex, headerStart).trim();
             sections.push({ name: sections[sections.length - 1].name, content: sectionContent });
         }
         
-        // Add this section header
+        // add this header
         sections.push({ name: sectionName, content: '' });
         lastIndex = headerEnd;
     }
     
-    // Add the content for the last section
+    // add last section content
     if (lastIndex > 0 && lastIndex < normalizedResponse.length) {
         const sectionContent = normalizedResponse.substring(lastIndex).trim();
         sections.push({ name: sections[sections.length - 1].name, content: sectionContent });
-        // Remove the duplicate empty section
+        // remove duplicate empty section
         sections.splice(sections.length - 2, 1);
     }
     
-    // Process each section
+    // process each section
     for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
         if (!section.content.trim()) {continue;}
         
-        // Skip if category is not recognized
+        // skip unknown categories
         if (!parsedData.hasOwnProperty(section.name)) {continue;}
         
-        // Handle "No issues found" case
+        // skip "no issues" cases
         if (section.content.toLowerCase().includes('no issues found') || 
             section.content.toLowerCase().includes('no problems') ||
             section.content.toLowerCase().includes('✅')) {
-            continue; // Skip adding these as they're handled by the UI
+            continue; // UI handles these
         }
         
-        // Extract bullet points from the content
+        // get bullet points
         const bulletPoints = extractBulletPointsWithCodeBlocks(section.content);
         
-        // Add bullet points to the category
+        // add to category if any found
         if (bulletPoints.length > 0) {
             parsedData[section.name] = bulletPoints;
         }
     }
     
-    // Log the parsed data for debugging
+    // debug log
     console.log('Parsed AI response:', parsedData);
     
     return parsedData;
@@ -194,28 +193,28 @@ function saveParsedResponse(responseFilePath: string): string | null {
         const rawResponse = fs.readFileSync(responseFilePath, 'utf-8');
         const parsedData = parseAIResponse(rawResponse);
 
-        // Generate JSON filename
+        // create filename with timestamp
         const jsonFileName = `response-${new Date().toISOString().replace(/:/g, '-')}.json`;
         const jsonFilePath = path.join(jsonResponsesDir, jsonFileName);
 
-        // Ensure the parsed data is valid JSON before saving
+        // ensure valid JSON before saving
         try {
-            // Test if the data can be stringified and parsed back
+            // check if valid
             const jsonString = JSON.stringify(parsedData, null, 2);
-            JSON.parse(jsonString); // This will throw if invalid
+            JSON.parse(jsonString); // will throw if invalid
             
-            // Write the file if valid
+            // save it
             fs.writeFileSync(jsonFilePath, jsonString, 'utf-8');
             console.log(`✅ Parsed AI response saved to: ${jsonFilePath}`);
             return jsonFilePath;
         } catch (jsonError) {
             console.error("Error creating valid JSON:", jsonError);
             
-            // Attempt to fix the data by cleaning it
+            // try to fix data
             const cleanedData = cleanParsedData(parsedData);
             const cleanedJson = JSON.stringify(cleanedData, null, 2);
             
-            // Save the cleaned data
+            // save fixed data
             fs.writeFileSync(jsonFilePath, cleanedJson, 'utf-8');
             console.log(`⚠️ Saved cleaned JSON response to: ${jsonFilePath}`);
             return jsonFilePath;
@@ -229,32 +228,32 @@ function saveParsedResponse(responseFilePath: string): string | null {
 function cleanParsedData(data: Record<string, string[]>): Record<string, string[]> {
     const cleanedData: Record<string, string[]> = {};
     
-    // Initialize all categories
+    // init all categories
     DEFAULT_CATEGORIES.forEach(category => {
         cleanedData[category] = [];
     });
     
-    // Process each category
+    // go thru each category
     Object.keys(data).forEach(category => {
-        // Skip if category is not recognized
+        // skip unknown categories
         if (!DEFAULT_CATEGORIES.includes(category)) {
             return;
         }
         
-        // Process each item in the category
+        // process each item
         if (Array.isArray(data[category])) {
             data[category].forEach(item => {
-                // Skip if item is not a string
+                // skip non-strings
                 if (typeof item !== 'string') {
                     return;
                 }
                 
-                // Skip empty items
+                // skip empty
                 if (!item.trim()) {
                     return;
                 }
                 
-                // Add the item to the cleaned data
+                // add to cleaned data
                 cleanedData[category].push(item);
             });
         }
@@ -293,7 +292,7 @@ function getWebviewHtml(context: vscode.ExtensionContext, webview: vscode.Webvie
         `;
     }
 
-// Tree item class for feedback categories and items
+// tree item for feedback 
 class FeedbackItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
@@ -304,7 +303,7 @@ class FeedbackItem extends vscode.TreeItem {
     ) {
         super(label, collapsibleState);
         
-        // Set icon based on type
+        // set icon
         if (type) {
             this.iconPath = new vscode.ThemeIcon(
                 type === 'error' ? 'error' : 
@@ -312,15 +311,15 @@ class FeedbackItem extends vscode.TreeItem {
             );
         }
         
-        // Set tooltip
+        // tooltip
         this.tooltip = content || label;
         
-        // Set context value for conditional view actions
+        // for view actions
         this.contextValue = category ? 'feedbackItem' : 'feedbackCategory';
     }
 }
 
-// Tree data provider for feedback
+// feedback tree provider
 class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<FeedbackItem | undefined | null | void> = new vscode.EventEmitter<FeedbackItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<FeedbackItem | undefined | null | void> = this._onDidChangeTreeData.event;
@@ -329,7 +328,7 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
     private currentFile: string = 'No file selected';
     
     constructor() {
-        // Initialize all categories with empty arrays
+        // init empty categories
         this.resetFeedbackData();
     }
     
@@ -346,20 +345,20 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
     
     getChildren(element?: FeedbackItem): Thenable<FeedbackItem[]> {
         if (!element) {
-            // Root level - return categories
+            // root - show categories
             return Promise.resolve(this.getCategoryItems());
         } else {
-            // Category level - return feedback items
+            // category - show items
             return Promise.resolve(this.getFeedbackItemsForCategory(element));
         }
     }
     
     private getCategoryItems(): FeedbackItem[] {
         return Object.keys(this.feedbackData).map(category => {
-            // Get items for this category
+            // get items
             const items = this.feedbackData[category] || [];
             
-            // Filter out "No issues found" messages to get actual issue count
+            // filter "no issues" msgs
             const actualIssueCount = this.getActualIssueCount(items);
             
             const label = `${category} (${actualIssueCount})`;
@@ -376,7 +375,7 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
         const items = this.feedbackData[categoryName] || [];
         
         return items.map(item => {
-            // Determine item type based on category
+            // get type from category
             const type = getCategoryType(categoryName);
             
             return new FeedbackItem(
@@ -398,27 +397,27 @@ class FeedbackTreeDataProvider implements vscode.TreeDataProvider<FeedbackItem> 
     }
     
     updateFeedback(data: Record<string, string[]>, filename: string) {
-        // Create a new object with all categories
+        // new obj with all categories
         const updatedData: Record<string, string[]> = {};
         
-        // Initialize all categories with empty arrays
+        // init empty
         DEFAULT_CATEGORIES.forEach(category => {
             updatedData[category] = [];
         });
         
-        // Copy data from the parsed response
+        // copy parsed data
         Object.keys(data).forEach(category => {
             if (DEFAULT_CATEGORIES.includes(category)) {
                 updatedData[category] = data[category];
             }
         });
         
-        // Update the feedback data
+        // update
         this.feedbackData = updatedData;
         this.currentFile = filename;
         this.refresh();
         
-        // Log the updated data for debugging
+        // debug
         console.log('Updated feedback data:', this.feedbackData);
     }
     
@@ -490,7 +489,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         const truncatedContent = this.truncateContent(fileContent);
         const prompt = `Review the following code:\n\n${truncatedContent}`;
 
-        // Show progress indicator
+        // show progress
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Analyzing code...",
@@ -498,7 +497,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         }, async (progress) => {
             progress.report({ increment: 0 });
             
-            // Get the file path where the response is saved
+            // get AI response
             const responseFilePath = await getAIResponse(prompt);
             if (!responseFilePath) {
                 vscode.window.showErrorMessage("Error retrieving AI response.");
@@ -507,7 +506,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             
             progress.report({ increment: 50 });
             
-            // Convert raw response to JSON and save it
+            // save as JSON
             const jsonFilePath = saveParsedResponse(responseFilePath);
             if (!jsonFilePath) {
                 vscode.window.showErrorMessage("Error processing AI response.");
@@ -516,7 +515,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             
             progress.report({ increment: 90 });
             
-            // Process the JSON response
+            // process JSON
             await this.processJsonResponse(jsonFilePath, fileName, retryCount);
             
             progress.report({ increment: 100 });
@@ -536,7 +535,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             const responseJson = fs.readFileSync(jsonFilePath, 'utf-8');
             const parsedJson = JSON.parse(responseJson);
 
-            // If JSON is blank, retry querying the AI
+            // retry if blank
             if (isBlankResponse(parsedJson)) {
                 if (retryCount < MAX_RETRIES) {
                     console.warn(`⚠️ Blank AI response detected. Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
@@ -547,13 +546,13 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 }
             }
             
-            // Update tree view with feedback data
+            // update tree
             this.treeDataProvider.updateFeedback(parsedJson, getShortFileName(fileName));
             
-            // Show all feedback items in the details view
+            // show all feedback
             this.showAllFeedbackItems();
             
-            // Post AI response to webview
+            // update webview
             this.postMessage(getShortFileName(fileName), responseJson);
             
         } catch (error) {
@@ -562,17 +561,17 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    // Show all feedback items from all categories
+    // show all items from all categories
     showAllFeedbackItems() {
         if (!this._view) {return;}
         
         const allCategories = Object.keys(this.treeDataProvider.getFeedbackData());
         const allItems: { category: string; content: string; type: 'error' | 'warning' | 'info' }[] = [];
         
-        // Collect items from all categories
+        // collect all items
         this.collectFeedbackItems(allCategories, allItems);
         
-        // Send all items to the webview
+        // send to webview
         this._view.webview.postMessage({ 
             command: 'showAllFeedbackItems',
             items: allItems,
@@ -588,7 +587,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             const items = this.treeDataProvider.getFeedbackItems(category) || [];
             const type = getCategoryType(category);
             
-            // Skip empty categories or those with only "No issues found"
+            // skip empty/"no issues" categories
             const actualItems = items.filter(item => 
                 !item.toLowerCase().includes('no issues') && 
                 !item.toLowerCase().includes('no problems') &&
@@ -621,11 +620,11 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     showItemDetails(item: FeedbackItem) {
         if (!this._view) {return;}
         
-        // If this is a category item (not a specific feedback item)
+        // category item
         if (item.contextValue === 'feedbackCategory') {
             this.showCategoryItems(item);
         } 
-        // If this is a specific feedback item
+        // feedback item
         else if (item.content) {
             this._view.webview.postMessage({ 
                 command: 'showItemDetails', 
@@ -642,7 +641,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         const categoryName = item.label.split(' (')[0];
         const items = this.treeDataProvider.getFeedbackItems(categoryName) || [];
         
-        // Filter out "No issues found" messages
+        // filter out "no issues" msgs
         const actualItems = items.filter(item => 
             !item.toLowerCase().includes('no issues') && 
             !item.toLowerCase().includes('no problems') &&
@@ -650,7 +649,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         );
         
         if (actualItems.length > 0) {
-            // Show all items in this category
+            // show all items in category
             const categoryItems = actualItems.map(content => ({
                 category: categoryName,
                 content,
@@ -663,7 +662,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                 items: categoryItems
             });
         } else {
-            // Show empty category message
+            // empty category
             this._view.webview.postMessage({ 
                 command: 'showItemDetails', 
                 category: categoryName,
@@ -680,14 +679,14 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
     async handleHTMLReport() {
         console.log("handleHTMLReport called");
         
-        // Check view state
+        // check view
         if (!this._view) {
             console.error("View is not available");
             vscode.window.showErrorMessage("Unable to display report progress. Please try again.");
             return;
         }
         
-        // Check if there's an active editor
+        // need editor
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor) {
             console.log("No active editor found");
@@ -699,7 +698,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         const fileName = activeEditor.document.fileName;
         const extension = getFileExtension(fileName);
 
-        // Check if file extension is supported
+        // check file type
         if (!this.supportedExtensions.includes(extension)) {
             console.log(`Unsupported file type: ${extension}`);
             vscode.window.showWarningMessage(`Unsupported file type: ${extension}`);
@@ -711,23 +710,23 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         const shortFileName = getShortFileName(fileName);
         console.log(`Processing file: ${shortFileName}`);
 
-        // Show progress indicator with multiple steps
+        // show progress
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: `Generating report for ${shortFileName}`,
             cancellable: false
         }, async (progress) => {
-            // Step 1: Initialize
+            // step 1: start
             progress.report({ 
                 increment: 0, 
                 message: "Starting report generation..." 
             });
             
-            // Update webview with initial progress
+            // update webview
             this.postProgressMessage('loading', 'Initializing', 'Preparing to generate report...');
-            await this.delay(500); // Brief delay for UI update
+            await this.delay(500); // quick UI update
             
-            // Step 2: Generate AI content
+            // step 2: AI analysis
             progress.report({ 
                 increment: 10, 
                 message: "Analyzing code with GPT-4o..." 
@@ -735,18 +734,18 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             
             this.postProgressMessage('loading', 'AI Analysis', 'Analyzing code with GPT-4o...');
             
-            // Get the markdown response
+            // get markdown
             const markdownFilePath = await generateReport(fileContent);
             
             if (!markdownFilePath) {
                 vscode.window.showErrorMessage("Error generating AI report content.");
                 this.postProgressMessage('error', 'AI Analysis Failed', 'Could not generate report content.');
-                await this.delay(3000); // Show error for 3 seconds
+                await this.delay(3000); // show error
                 this.postProgressMessage('idle');
                 return;
             }
             
-            // Step 3: Convert to HTML
+            // step 3: HTML conversion
             progress.report({ 
                 increment: 60, 
                 message: "Converting to HTML format..." 
@@ -755,31 +754,31 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
             this.postProgressMessage('loading', 'HTML Conversion', 'Converting markdown to HTML (this may take a moment)...');
             
             try {
-                // Convert markdown to HTML
+                // convert to HTML
                 console.log(`Attempting to convert ${markdownFilePath} to HTML`);
                 const convertedFilePath = await convertMarkdownToHtml(markdownFilePath);
                 
-                // Step 4: Finalize
+                // step 4: final
                 progress.report({ 
                     increment: 30, 
                     message: "Finalizing report..." 
                 });
                 
-                // Check if the file exists
+                // file exists?
                 if (!fs.existsSync(convertedFilePath)) {
                     throw new Error('Failed to create report file');
                 }
                 
-                // Check what type of file was created
+                // check file type
                 const isHtml = convertedFilePath.toLowerCase().endsWith('.html');
                 const isMd = convertedFilePath.toLowerCase().endsWith('.md');
                 
-                // Open the appropriate file
+                // open file
                 const fileUri = vscode.Uri.file(convertedFilePath);
                 await vscode.commands.executeCommand('vscode.open', fileUri);
                 
                 if (isHtml) {
-                    // HTML report created
+                    // html report
                     vscode.window.showInformationMessage(`HTML report for ${shortFileName} generated successfully.`);
                     this.postProgressMessage(
                         'success', 
@@ -787,7 +786,7 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                         `HTML report generated and opened in a new tab.`
                     );
                 } else {
-                    // Markdown fallback
+                    // md fallback
                     vscode.window.showWarningMessage(`Enhanced report creation used markdown fallback for ${shortFileName}.`);
                     this.postProgressMessage(
                         'success', 
@@ -796,22 +795,20 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
                     );
                 }
                 
-                // Show message for a few seconds, then return to default view
+                // temp message, then back to normal
                 await this.delay(3000);
                 this.postProgressMessage('idle');
             } catch (error) {
                 console.error("HTML conversion error:", error);
                 vscode.window.showErrorMessage(`Error creating report: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 this.postProgressMessage('error', 'Report Creation Failed', 'Could not convert to HTML format.');
-                await this.delay(3000); // Show error for 3 seconds
+                await this.delay(3000); // show error
                 this.postProgressMessage('idle');
             }
         });
     }
     
-    /**
-     * Post a progress message to the webview
-     */
+    // post progress msg to webview
     private postProgressMessage(
         state: 'loading' | 'error' | 'success' | 'idle',
         title?: string,
@@ -827,34 +824,32 @@ class AICodingWebviewViewProvider implements vscode.WebviewViewProvider {
         });
     }
     
-    /**
-     * Helper function to create a delay
-     */
+    // wait helper
     private delay(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
-// Function called when the extension is activated
+// ext activation
 export function activate(context: vscode.ExtensionContext) {
     console.log('AI Coding Assistant is now active!');
 
-    // Create tree data provider
+    // make tree provider
     const feedbackProvider = new FeedbackTreeDataProvider();
     
-    // Register tree view
+    // register tree
     const treeView = vscode.window.createTreeView('aiCodingTreeView', {
         treeDataProvider: feedbackProvider,
         showCollapseAll: true
     });
     
-    // Register webview provider for details panel
+    // register webview for details
     const webviewProvider = new AICodingWebviewViewProvider(context, feedbackProvider);
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider('aiCodingDetailsView', webviewProvider)
     );
 
-    // Register command to analyze current file
+    // register analyze cmd
     context.subscriptions.push(
         vscode.commands.registerCommand('aiCodingAssistant.analyzeCurrentFile', async () => {
             await webviewProvider.handleAIAnalysis();
@@ -862,7 +857,7 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register command for HTML report
+    // register html report cmd
     context.subscriptions.push(
         vscode.commands.registerCommand('aiCodingAssistant.generateHTMLReport', async () => {
             console.log("HTML report command triggered");
@@ -875,14 +870,14 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Update target file when active editor changes
+    // update target on editor change
     vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor && webviewProvider.getView()) {
             webviewProvider.updateTargetFile(editor.document.fileName);
         }
     });
     
-    // Handle tree item selection
+    // handle tree selection
     treeView.onDidChangeSelection(e => {
         if (e.selection.length > 0) {
             const item = e.selection[0];
@@ -893,5 +888,5 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(treeView);
 }
 
-// For cleanup, called when the extension is deactivated
+// cleanup
 export function deactivate() {}

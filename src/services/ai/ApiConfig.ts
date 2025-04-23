@@ -3,9 +3,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
 
-/**
- * Manages environment configuration and OpenAI API setup
- */
+// handles env config and OpenAI setup
 export class ApiConfig {
     private static instance: ApiConfig;
     public readonly apiKey: string;
@@ -18,12 +16,10 @@ export class ApiConfig {
         this.responsesDir = this.initializeResponsesDirectory();
     }
 
-    /**
-     * Finds the project root directory by looking for package.json
-     */
+    // finds project root by looking for package.json
     private findProjectRoot(): string {
         let currentDir = __dirname;
-        // Navigate up until we find package.json (project root marker)
+        // look upwards until we find package.json
         while (currentDir !== path.parse(currentDir).root) {
             if (fs.existsSync(path.join(currentDir, 'package.json'))) {
                 return currentDir;
@@ -32,15 +28,13 @@ export class ApiConfig {
         }
         
         console.warn('Could not find project root, using a relative path fallback');
-        // Fallback to 3 levels up from the current file if we can't find package.json
+        // fallback if no package.json - go up 3 dirs
         return path.resolve(__dirname, '../../..');
     }
 
-    /**
-     * Loads API key from environment variables
-     */
+    // gets API key from env vars
     private loadApiKey(): string {
-        // Find the project root to locate .env file
+        // find root for .env file
         const projectRoot = this.findProjectRoot();
         const envPath = path.join(projectRoot, '.env');
         console.log(`Looking for .env at: ${envPath}`);
@@ -57,11 +51,9 @@ export class ApiConfig {
         return apiKey;
     }
 
-    /**
-     * Creates and initializes the responses directory
-     */
+    // makes sure responses dir exists
     private initializeResponsesDirectory(): string {
-        // Find the project root to locate the responses directory
+        // find root for responses dir
         const projectRoot = this.findProjectRoot();
         const dir = path.join(projectRoot, 'responses');
         console.log(`Setting up responses directory at: ${dir}`);
@@ -72,9 +64,7 @@ export class ApiConfig {
         return dir;
     }
 
-    /**
-     * Gets the singleton instance of ApiConfig
-     */
+    // get singleton instance
     public static getInstance(): ApiConfig {
         if (!ApiConfig.instance) {
             ApiConfig.instance = new ApiConfig();
@@ -83,5 +73,5 @@ export class ApiConfig {
     }
 }
 
-// Create a singleton instance for export
+// singleton for export
 export const config = ApiConfig.getInstance(); 
