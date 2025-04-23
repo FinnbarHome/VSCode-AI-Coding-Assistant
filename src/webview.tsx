@@ -4,7 +4,7 @@ import Header from "./components/Header";
 import FeedbackDetail from "./components/FeedbackDetail";
 import "./styles/global.css"; 
 
-// Types
+// types for our data
 interface FeedbackItemType {
     category: string;
     content: string;
@@ -28,11 +28,11 @@ interface ReportProgressState {
     message?: string;
 }
 
-// Acquire VSCode API
+// get vscode api
 declare const acquireVsCodeApi: () => any;
 const vscode = acquireVsCodeApi();
 
-// Component for loading state
+// loading spinner
 const LoadingState: React.FC<{ message: string }> = ({ message }) => {
     return (
         <div className="loading">
@@ -42,7 +42,7 @@ const LoadingState: React.FC<{ message: string }> = ({ message }) => {
     );
 };
 
-// Component for report progress
+// progress state display
 const ReportProgressState: React.FC<{ progress: ReportProgressState }> = ({ progress }) => {
     const { state, title, message } = progress;
     
@@ -68,7 +68,7 @@ const ReportProgressState: React.FC<{ progress: ReportProgressState }> = ({ prog
     );
 };
 
-// Component for empty state
+// empty state - no items selected
 const EmptyState: React.FC<{ onAnalyzeClick: () => void, onReportClick: () => void }> = ({
     onAnalyzeClick,
     onReportClick
@@ -88,12 +88,12 @@ const EmptyState: React.FC<{ onAnalyzeClick: () => void, onReportClick: () => vo
     );
 };
 
-// Component for all feedback items
+// shows all feedback grouped by category
 const AllFeedbackItems: React.FC<{ 
     items: FeedbackItemType[],
     onReportClick: () => void
 }> = ({ items, onReportClick }) => {
-    // Group items by category
+    // group by category
     const groupedItems: Record<string, FeedbackItemType[]> = {};
     
     items.forEach(item => {
@@ -103,7 +103,7 @@ const AllFeedbackItems: React.FC<{
         groupedItems[item.category].push(item);
     });
 
-    // Sort categories in a specific order
+    // sort categories by predefined order
     const categoryOrder = [
         "Serious Problems",
         "Warnings",
@@ -148,7 +148,7 @@ const AllFeedbackItems: React.FC<{
     );
 };
 
-// Component for category items
+// shows all items in a single category
 const CategoryFeedbackItems: React.FC<{ items: FeedbackItemType[] }> = ({ items }) => {
     if (items.length === 0) return null;
     
@@ -168,7 +168,7 @@ const CategoryFeedbackItems: React.FC<{ items: FeedbackItemType[] }> = ({ items 
     );
 };
 
-// Set up message handler for VSCode extension communication
+// handles messages from VSCode extension
 function setupMessageHandler(props: MessageHandlerProps) {
     const {
         setFilename,
@@ -242,7 +242,7 @@ function setupMessageHandler(props: MessageHandlerProps) {
     return messageHandler;
 }
 
-// Main webview component
+// main component
 const VSCodeWebview: React.FC = () => {
     const [filename, setFilename] = React.useState<string>("None");
     const [selectedItem, setSelectedItem] = React.useState<FeedbackItemType | null>(null);
@@ -253,7 +253,7 @@ const VSCodeWebview: React.FC = () => {
     const [loadingMessage, setLoadingMessage] = React.useState<string>("Analyzing your code...");
     const [reportProgress, setReportProgress] = React.useState<ReportProgressState | null>(null);
     
-    // Listen for messages from the VSCode extension
+    // setup message listener
     React.useEffect(() => {
         const handler = setupMessageHandler({
             setFilename,
@@ -270,7 +270,7 @@ const VSCodeWebview: React.FC = () => {
         return () => window.removeEventListener("message", handler);
     }, []);
 
-    // Request AI analysis from VSCode extension
+    // ask extension to analyze current file
     const sendRequest = () => {
         console.log("Sending request to VSCode extension");
         setIsLoading(true);
@@ -281,10 +281,10 @@ const VSCodeWebview: React.FC = () => {
         vscode.postMessage({ command: "getAIAnalysis" });
     };
 
-    // Request detailed HTML report generation
+    // ask extension to make full HTML report
     const generateReport = () => {
         console.log("Sending generateHTMLReport command to extension");
-        // Set loading state to show initial feedback to user
+        // show initial feedback
         setReportProgress({
             state: 'loading',
             title: 'Initializing',
@@ -292,18 +292,18 @@ const VSCodeWebview: React.FC = () => {
         });
         vscode.postMessage({ 
             command: "generateHTMLReport",
-            timestamp: new Date().toISOString() // Add timestamp to ensure uniqueness
+            timestamp: new Date().toISOString() // ensure unique request
         });
     };
 
-    // Render content based on view mode and state
+    // figure out what to show based on state
     const renderContent = () => {
-        // If there's a report progress, show it
+        // report progress has priority
         if (reportProgress) {
             return <ReportProgressState progress={reportProgress} />;
         }
         
-        // Otherwise, continue with normal rendering
+        // normal content flow
         if (isLoading) {
             return <LoadingState message={loadingMessage} />;
         }
@@ -348,7 +348,7 @@ const VSCodeWebview: React.FC = () => {
     );
 };
 
-// Mount the React app to the DOM
+// mount React app
 const rootElement = document.getElementById("root");
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);
